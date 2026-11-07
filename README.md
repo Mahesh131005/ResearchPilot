@@ -8,18 +8,18 @@
 
 ```mermaid
 flowchart TD
-    User([User Request]) --> NewResearch[New Research Form]
-    NewResearch --> JobAPI[Research Job API]
-    JobAPI --> JobManager[Research Job Manager]
+    User(["User Request"]) --> NewResearch["New Research Form"]
+    NewResearch --> JobAPI["Research Job API"]
+    JobAPI --> JobManager["Research Job Manager"]
 
     subgraph LangGraph Multi-Agent Engine
         direction TB
-        Planner[1. Planner Agent]
-        WebAgent[2. Web Research Agent<br/>(Tavily API)]
-        DocAgent[3. Document Research Agent<br/>(pgvector RAG)]
-        Normalizer[Evidence Normalizer & Deduplicator]
-        FactChecker[4. Fact Checker Agent<br/>(Claim Verification)]
-        ReportWriter[5. Report Writer Agent<br/>(Structured Synthesis)]
+        Planner["1. Planner Agent"]
+        WebAgent["2. Web Research Agent<br/>(Tavily API)"]
+        DocAgent["3. Document Research Agent<br/>(pgvector RAG)"]
+        Normalizer["Evidence Normalizer & Deduplicator"]
+        FactChecker["4. Fact Checker Agent<br/>(Claim Verification)"]
+        ReportWriter["5. Report Writer Agent<br/>(Structured Synthesis)"]
 
         Planner -->|Parallel Fan-Out| WebAgent
         Planner -->|Parallel Fan-Out| DocAgent
@@ -31,8 +31,8 @@ flowchart TD
 
     JobManager --> Planner
     ReportWriter --> JobManager
-    JobManager --> DB[(PostgreSQL + pgvector)]
-    JobManager -.->|Server-Sent Events| LiveUI[Live Execution Stepper & Report Viewer]
+    JobManager --> DB[("PostgreSQL + pgvector")]
+    JobManager -.->|Server-Sent Events| LiveUI["Live Execution Stepper & Report Viewer"]
 ```
 
 ---

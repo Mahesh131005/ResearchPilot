@@ -46,22 +46,22 @@ ResearchPilot uses **LangGraph** to coordinate 5 specialized autonomous agents t
 
 ```mermaid
 flowchart TD
-    StartNode([Start Research Job]) --> Planner[1. Planner Agent]
+    StartNode(["Start Research Job"]) --> Planner["1. Planner Agent"]
     
-    Planner -->|Evaluate Query & Depth| RoutingDecision{Execution Route}
-    RoutingDecision -->|Web + Docs| ParallelFork[Parallel Branching]
-    RoutingDecision -->|Web Only| WebAgent[2. Web Research Agent]
-    RoutingDecision -->|Docs Only| DocAgent[3. Document Research Agent]
+    Planner -->|Evaluate Query & Depth| RoutingDecision{"Execution Route"}
+    RoutingDecision -->|Web + Docs| ParallelFork["Parallel Branching"]
+    RoutingDecision -->|Web Only| WebAgent["2. Web Research Agent"]
+    RoutingDecision -->|Docs Only| DocAgent["3. Document Research Agent"]
 
     ParallelFork --> WebAgent
     ParallelFork --> DocAgent
 
-    WebAgent -->|Annotated Reducer Merging| EvidenceJoin[Evidence Normalizer Node]
+    WebAgent -->|Annotated Reducer Merging| EvidenceJoin["Evidence Normalizer Node"]
     DocAgent -->|Annotated Reducer Merging| EvidenceJoin
 
-    EvidenceJoin --> FactChecker[4. Fact Checker Agent]
-    FactChecker -->|Claim-by-Claim Verification| ReportWriter[5. Report Writer Agent]
-    ReportWriter --> EndNode([Persist Report & Complete])
+    EvidenceJoin --> FactChecker["4. Fact Checker Agent"]
+    FactChecker -->|Claim-by-Claim Verification| ReportWriter["5. Report Writer Agent"]
+    ReportWriter --> EndNode(["Persist Report & Complete"])
 ```
 
 ### Agent Roles & Responsibilities
