@@ -20,6 +20,7 @@ logger = logging.getLogger("researchpilot")
 async def lifespan(app: FastAPI):
     app.state.start_time = time.time()
     logger.info("Initializing ResearchPilot backend (Production Readiness Active)...")
+    logger.info("Database target (credentials omitted): async=%s, sync=%s", settings.safe_db_summary, settings.safe_sync_db_summary)
     yield
     logger.info("Graceful shutdown initiated. Releasing resources...")
 

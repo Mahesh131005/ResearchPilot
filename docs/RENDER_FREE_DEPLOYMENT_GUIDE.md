@@ -233,3 +233,27 @@ In `render.yaml`, `CORS_ORIGINS` is configured to `*` for the free tier. In prod
    - Wait ~3 minutes for PostgreSQL creation, Docker build, and static asset generation.
    - Check API health: `https://<YOUR-API-HOST>/api/v1/health`
    - Log in to the web app: `admin@researchpilot.local` with your chosen password.
+
+---
+
+## 9. PostgreSQL Connection Architecture & Troubleshooting
+
+### A. How Render Injects Managed Database Credentials
+Render provisions managed PostgreSQL databases with an internal hostname reachable only within the Render private network:
+- Internal Hostname: `dpg-xxxxxx-a` (e.g. `dpg-dbo48h3m8hqs73fgujrg-a`)
+- Internal Port: `5432`
+- Render auto-injects `DATABASE_URL` into `researchpilot-api`:
+  `postgres://researchpilot:<password>@dpg-xxxxxx-a:5432/researchpilot`
+
+### B. Dual Database URL Architecture (Async vs. Sync)
+ResearchPilot uses two distinct database drivers:
+1. **Async Driver (`asyncpg`)**: Used by FastAPI endpoints and SQLAlchemy async sessions (`app/db/session.py`). Requires `postgresql+asyncpg://` dialect and `ssl=require`.
+2. **Sync Driver (`psycopg2`)**: Used by Alembic migrations (`alembic upgrade head`) and container pre-flight connectivity checks (`docker-entrypoint.sh`). Requires `postgresql+psycopg2://` dialect and `sslmode=require`.
+
+### C. Automatic Derivation & Defense-in-Depth
+- **Blueprint Injection:** Both `DATABASE_URL` and `SYNC_DATABASE_URL` are linked to `researchpilot-db.connectionString` in `render.yaml`.
+- **Dynamic Derivation:** In `app/core/config.py`, if `SYNC_DATABASE_URL` is not provided or points to a stale local address while `DATABASE_URL` is remote, `SYNC_DATABASE_URL` is automatically derived from `DATABASE_URL`.
+- **Shell Export:** `backend/docker-entrypoint.sh` exports `SYNC_DATABASE_URL="${SYNC_DATABASE_URL:-$DATABASE_URL}"` before executing Alembic.
+- **Fail-Fast Validation:** If `APP_ENV=production`, the application immediately raises a fatal configuration error if `DATABASE_URL` is missing or points to `localhost`, `127.0.0.1`, `::1`, `0.0.0.0`, or port `5433`.
+- **Safe Diagnostic Logging:** Startup pre-flight, Alembic, and FastAPI log target host and port (e.g. `host=dpg-dbo48h3m8hqs73fgujrg-a, port=5432`), strictly redacting passwords and user credentials.
+

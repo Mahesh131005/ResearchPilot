@@ -52,6 +52,10 @@ services:
         fromDatabase:
           name: researchpilot-db
           property: connectionString
+      - key: SYNC_DATABASE_URL
+        fromDatabase:
+          name: researchpilot-db
+          property: connectionString
 
       # Temporary / Ephemeral Upload Storage
       - key: UPLOAD_DIR

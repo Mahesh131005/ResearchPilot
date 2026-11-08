@@ -28,6 +28,10 @@ current_url = config.get_main_option("sqlalchemy.url")
 if not current_url or current_url == "driver://user:pass@localhost/dbname":
     config.set_main_option("sqlalchemy.url", settings.SYNC_DATABASE_URL)
 
+from app.core.config import get_safe_db_target
+safe_info = get_safe_db_target(config.get_main_option("sqlalchemy.url"))
+print(f"==> Alembic running migrations against database target: host={safe_info.get('host')}, port={safe_info.get('port')}, database={safe_info.get('database')} (credentials omitted)")
+
 target_metadata = Base.metadata
 
 def run_migrations_offline() -> None:
