@@ -1,6 +1,7 @@
 import re
 import uuid
 from typing import Optional, List, Dict, Any
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -31,6 +32,16 @@ class DocumentQAService:
         self.llm_provider = llm_provider or get_llm_provider()
 
     async def answer_query(self, request: DocumentQueryRequest, user_id: Optional[uuid.UUID] = None) -> DocumentQueryResponse:
+        if not settings.BILLABLE_OPERATIONS_ENABLED and settings.effective_llm_mode == "live":
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=(
+                    "Live billable operations are temporarily suspended by administrator "
+                    "(BILLABLE_OPERATIONS_ENABLED=False). Document Q&A with live LLM synthesis is paused. "
+                    "Switch to PROVIDER_MODE='mock' or enable billable operations to proceed."
+                ),
+            )
+
         threshold = request.threshold if request.threshold is not None else settings.SIMILARITY_THRESHOLD
 
         # 1. Semantic Retrieval with user isolation

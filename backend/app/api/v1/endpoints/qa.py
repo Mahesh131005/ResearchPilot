@@ -14,6 +14,7 @@ from app.schemas.qa import (
     ChunkEvidence,
 )
 from app.core.usage_context import set_usage_context, clear_usage_context
+from app.core.config import settings
 
 router = APIRouter(prefix="/qa", tags=["qa"])
 
@@ -57,6 +58,16 @@ async def search_chunks(
     Semantic vector search endpoint scoped to the authenticated user's documents.
     Returns ranked evidence chunks with exact page numbers and similarity scores.
     """
+    if not settings.BILLABLE_OPERATIONS_ENABLED and settings.effective_embedding_mode == "live":
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Live billable operations are temporarily suspended by administrator "
+                "(BILLABLE_OPERATIONS_ENABLED=False). Semantic vector search with live embeddings is paused. "
+                "Switch to PROVIDER_MODE='mock' or enable billable operations to proceed."
+            ),
+        )
+
     if request.document_id:
         doc_stmt = select(Document.id).where(
             Document.id == request.document_id,

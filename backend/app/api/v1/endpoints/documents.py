@@ -1,10 +1,13 @@
+import os
 import uuid
 from typing import List
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, get_current_active_user
 from app.models.research import User
+from app.models.document import Document
 from app.services.document_service import DocumentService
 from app.schemas.document import (
     DocumentResponse,
@@ -60,6 +63,40 @@ async def get_document(
             detail=f"Document with ID {document_id} not found."
         )
     return doc
+
+@router.get("/{document_id}/file")
+async def get_raw_document_file(
+    document_id: uuid.UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Download raw PDF file binary.
+    If the file on disk was cleared (e.g. following a container restart on ephemeral storage),
+    returns an explicit HTTP 410 Gone error explaining that while the raw binary was purged,
+    all parsed chunks and vector embeddings remain fully functional in PostgreSQL.
+    """
+    doc = await db.get(Document, document_id)
+    if not doc or (doc.user_id and doc.user_id != current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document with ID {document_id} not found."
+        )
+
+    if not os.path.exists(doc.file_path):
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail=(
+                "Original raw PDF binary is no longer present on ephemeral storage following a container restart. "
+                "However, all parsed chunks, text, and vector embeddings remain intact in the database and are fully available for research and Q&A."
+            ),
+        )
+
+    return FileResponse(
+        path=doc.file_path,
+        filename=doc.filename,
+        media_type="application/pdf",
+    )
 
 @router.get("/{document_id}/chunks", response_model=List[DocumentChunkResponse])
 async def get_document_chunks(

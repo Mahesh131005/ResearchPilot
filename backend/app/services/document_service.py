@@ -61,6 +61,16 @@ class DocumentService:
 
     async def create_document(self, file: UploadFile, user_id: Optional[uuid.UUID] = None) -> Document:
         """Stores physical file and creates document record, extracts text, chunks, and embeds."""
+        if not settings.BILLABLE_OPERATIONS_ENABLED and settings.effective_embedding_mode == "live":
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=(
+                    "Live billable operations are temporarily suspended by administrator "
+                    "(BILLABLE_OPERATIONS_ENABLED=False). Document ingestion with live embeddings is paused. "
+                    "Switch to PROVIDER_MODE='mock' or enable billable operations to proceed."
+                ),
+            )
+
         filename, file_size = await self.validate_upload(file)
 
         doc_id = uuid.uuid4()

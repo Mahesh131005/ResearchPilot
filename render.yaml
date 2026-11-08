@@ -1,12 +1,12 @@
 # ==============================================================================
-# ResearchPilot — Render Deployment Blueprint (render.yaml)
+# ResearchPilot — Render Free Deployment Blueprint (render.yaml)
 # ==============================================================================
-# This Blueprint automates the provisioning of:
-# 1. Managed PostgreSQL database with pgvector extension enabled.
-# 2. FastAPI backend Docker web service with persistent upload disk.
-# 3. React SPA frontend static site.
+# 100% Free Tier Deployment Configuration:
+# - PostgreSQL 16 with pgvector on Render Free plan (30-day expiration).
+# - FastAPI backend Docker Web Service on Render Free plan (ephemeral uploads).
+# - React SPA frontend Web Service with static runtime (100% Free).
 #
-# Documentation: docs/RENDER_DEPLOYMENT_GUIDE.md
+# Complete Guide & Limitations: docs/RENDER_FREE_DEPLOYMENT_GUIDE.md
 # ==============================================================================
 
 version: "1"
@@ -15,29 +15,26 @@ databases:
   - name: researchpilot-db
     databaseName: researchpilot
     user: researchpilot
-    plan: starter # $7/mo. Note: Free tier databases expire after 30 days and are unsuited for persistent production storage.
+    plan: free # Render Free tier (1GB storage, expires after 30 days; see backup instructions in docs/RENDER_FREE_DEPLOYMENT_GUIDE.md)
     postgresMajorVersion: "16"
     region: oregon # Supported regions: oregon, frankfurt, ohio, singapore, virginia
 
 services:
   # ----------------------------------------------------------------------------
-  # Backend API Web Service
+  # Backend API Web Service (Free Tier)
   # ----------------------------------------------------------------------------
   - type: web
     name: researchpilot-api
     runtime: docker
     dockerfilePath: backend/Dockerfile
     dockerContext: backend
-    plan: starter # $7/mo. Starter plan ensures 24/7 continuous execution without spin-down interruptions for multi-agent jobs.
+    plan: free # Render Free tier (512MB RAM, spins down after 15m of inactivity)
     region: oregon
     healthCheckPath: /api/v1/health
 
-    # Persistent disk for uploaded PDFs and knowledge base documents
-    # Note: Disks require Starter plan or above. Remove disk block if testing on Free plan.
-    disk:
-      name: researchpilot-uploads
-      mountPath: /app/uploads
-      sizeGB: 5
+    # Storage note: Persistent Disks are not supported on Render Free plan.
+    # Uploaded PDFs reside in ephemeral container storage (/app/uploads) and do not survive restarts.
+    # Chunk text and 768-dim vector embeddings remain persisted in PostgreSQL.
 
     envVars:
       # Application Configuration
@@ -56,7 +53,7 @@ services:
           name: researchpilot-db
           property: connectionString
 
-      # Storage & File Limits
+      # Temporary / Ephemeral Upload Storage
       - key: UPLOAD_DIR
         value: /app/uploads
       - key: MAX_FILE_SIZE_MB
@@ -76,12 +73,12 @@ services:
       - key: INITIAL_ADMIN_PASSWORD
         sync: false # Set securely in the Render Dashboard during or after Blueprint sync
 
-      # AI Provider Mode & External Keys
-      # PROVIDER_MODE: "auto" uses live keys if supplied; otherwise falls back to deterministic mock simulation
+      # Operational Safety Switches & AI Provider Settings
+      # BILLABLE_OPERATIONS_ENABLED: false initially protects against unexpected external API spend.
+      - key: BILLABLE_OPERATIONS_ENABLED
+        value: "false"
       - key: PROVIDER_MODE
         value: auto
-      - key: BILLABLE_OPERATIONS_ENABLED
-        value: "true"
       - key: GEMINI_API_KEY
         sync: false # Google AI Studio API Key (Leave empty to run in Mock mode)
       - key: TAVILY_API_KEY
@@ -91,7 +88,7 @@ services:
       - key: CORS_ORIGINS
         value: "*" # Set to your frontend Render URL in production (e.g. https://researchpilot-web.onrender.com)
 
-      # Billing & Budget Safety Ceilings
+      # Billing & Budget Safety Ceilings (Mock Mode by default)
       - key: GLOBAL_DAILY_BUDGET_USD
         value: "50.0"
       - key: GLOBAL_MONTHLY_BUDGET_USD
@@ -101,7 +98,7 @@ services:
       - key: FREE_TIER_COMPLIMENTARY_BALANCE_USD
         value: "1.00"
       - key: STRIPE_MODE
-        value: mock
+        value: mock # Real payments strictly disabled
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET

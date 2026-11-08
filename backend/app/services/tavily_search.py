@@ -59,6 +59,17 @@ class TavilySearchService:
             return results
 
         # Live Mode / Authenticated Call
+        if not settings.BILLABLE_OPERATIONS_ENABLED and self.is_live:
+            from fastapi import HTTPException, status
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=(
+                    "Live billable operations are temporarily suspended by administrator "
+                    "(BILLABLE_OPERATIONS_ENABLED=False). Live external web search is paused. "
+                    "Switch to PROVIDER_MODE='mock' or enable billable operations to proceed."
+                ),
+            )
+
         try:
             response = self.client.search(
                 query=query,
