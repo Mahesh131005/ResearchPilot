@@ -110,11 +110,11 @@ services:
   # ----------------------------------------------------------------------------
   # Frontend Static Site (100% Free on Render)
   # ----------------------------------------------------------------------------
-  - type: static
+  - type: web
     name: researchpilot-web
-    rootDir: frontend
-    buildCommand: npm ci && npm run build
-    publishPath: dist
+    runtime: static
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: frontend/dist
     routes:
       - type: rewrite
         source: /*
