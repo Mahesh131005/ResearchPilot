@@ -90,7 +90,7 @@ services:
 
       # CORS & Networking
       - key: CORS_ORIGINS
-        value: "*" # Set to your frontend Render URL in production (e.g. https://researchpilot-web.onrender.com)
+        value: https://researchpilot-web.onrender.com
 
       # Billing & Budget Safety Ceilings (Mock Mode by default)
       - key: GLOBAL_DAILY_BUDGET_USD
@@ -122,8 +122,5 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: researchpilot-api
-          property: host
+        value: https://researchpilot-api-cb0c.onrender.com
 

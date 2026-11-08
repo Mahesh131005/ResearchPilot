@@ -194,24 +194,28 @@ Render Free web services do not support persistent disks. All uploads reside in 
 
 ## 7. Networking & Frontend Integration Verification
 
-### A. `VITE_API_URL` Resolution
-In `render.yaml`, the frontend static site injects:
+### A. Production URLs & `VITE_API_URL` Resolution
+The deployed production endpoints are:
+- **Frontend SPA**: `https://researchpilot-web.onrender.com`
+- **Backend API**: `https://researchpilot-api-cb0c.onrender.com`
+
+In [`render.yaml`](file:///f:/Research%20Agent/render.yaml), the frontend static site injects:
 ```yaml
 envVars:
   - key: VITE_API_URL
-    fromService:
-      type: web
-      name: researchpilot-api
-      property: host
+    value: https://researchpilot-api-cb0c.onrender.com
 ```
-- Render injects the backend hostname (e.g. `researchpilot-api.onrender.com`).
 - [`frontend/src/services/api.js`](file:///f:/Research%20Agent/frontend/src/services/api.js) automatically normalizes this value:
   - If it lacks a scheme, it prepends `https://`.
-  - Appends `/api/v1` to form the base URL `https://researchpilot-api.onrender.com/api/v1`.
-  - If unconfigured, falls back to local proxy `/api/v1`.
+  - Strips any trailing `/api/v1` or trailing slash to avoid double-prefixing.
+  - Appends `/api/v1` to form the base URL `https://researchpilot-api-cb0c.onrender.com/api/v1`.
+  - In local development (when `VITE_API_URL` is empty), cleanly defaults to `/api/v1` (forwarded to `http://127.0.0.1:8000` via Vite dev proxy).
 
-### B. CORS Configuration
-In `render.yaml`, `CORS_ORIGINS` is configured to `*` for the free tier. In production, this can be locked down to your static site URL (e.g. `https://researchpilot-web.onrender.com`).
+### B. Production CORS Configuration
+In [`render.yaml`](file:///f:/Research%20Agent/render.yaml) and [`backend/app/core/config.py`](file:///f:/Research%20Agent/backend/app/core/config.py):
+- `CORS_ORIGINS` is configured to `https://researchpilot-web.onrender.com`.
+- **Wildcard CORS (`*`) is strictly forbidden** and rejected with a fatal validation error in production.
+- Local development origins (`http://localhost:5173`, `http://127.0.0.1:5173`, `http://localhost:3000`) remain preserved for local workflows.
 
 ---
 

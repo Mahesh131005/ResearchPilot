@@ -1,13 +1,16 @@
 import axios from "axios";
 
 const rawApiUrl = import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_URL).trim() : "";
-const normalizedHost = rawApiUrl
-  ? (rawApiUrl.startsWith("http://") || rawApiUrl.startsWith("https://") ? rawApiUrl : `https://${rawApiUrl}`)
-  : "";
+let normalizedHost = rawApiUrl;
+if (normalizedHost) {
+  if (!normalizedHost.startsWith("http://") && !normalizedHost.startsWith("https://")) {
+    normalizedHost = `https://${normalizedHost}`;
+  }
+  // Strip trailing slashes and any trailing /api/v1 to avoid double-prefixing
+  normalizedHost = normalizedHost.replace(/\/api\/v1\/?$/, "").replace(/\/+$/, "");
+}
 
-const API_BASE_URL = normalizedHost
-  ? `${normalizedHost.replace(/\/$/, "")}/api/v1`
-  : "/api/v1";
+export const API_BASE_URL = normalizedHost ? `${normalizedHost}/api/v1` : "/api/v1";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -230,6 +233,11 @@ export const researchApi = {
   getEvents: async (id) => {
     const response = await api.get(`/research/jobs/${id}/events`);
     return response.data;
+  },
+
+  getStreamUrl: (id, token = null) => {
+    const t = token || localStorage.getItem(ACCESS_TOKEN_KEY);
+    return `${API_BASE_URL}/research/jobs/${id}/stream${t ? `?token=${encodeURIComponent(t)}` : ""}`;
   },
 
   getReport: async (id) => {

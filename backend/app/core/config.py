@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     API_V1_STR: str = "/api/v1"
     CORS_ORIGINS: Union[List[str], str] = [
+        "https://researchpilot-web.onrender.com",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:3000",
@@ -318,6 +319,13 @@ class Settings(BaseSettings):
         # 3. Normalize CORS_ORIGINS if provided as comma-separated string
         if isinstance(self.CORS_ORIGINS, str):
             self.CORS_ORIGINS = [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
+        if is_production:
+            if "*" in self.CORS_ORIGINS:
+                raise ValueError(
+                    "FATAL CONFIGURATION ERROR: Wildcard CORS ('*') is not allowed in production. "
+                    "Set CORS_ORIGINS to https://researchpilot-web.onrender.com."
+                )
 
         return self
 

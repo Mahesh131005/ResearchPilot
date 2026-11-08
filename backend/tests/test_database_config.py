@@ -147,4 +147,27 @@ def test_docker_entrypoint_preflight_parsing():
     assert "researchpilot_viob" in target_db
     assert "secretpass123" not in f"{target_host}:{target_port}/{target_db}"
 
+def test_production_rejects_wildcard_cors(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("DATABASE_URL", "postgres://researchpilot:secretpass@dpg-dbo48h3m8hqs73fgujrg-a:5432/researchpilot_viob")
+    monkeypatch.setenv("CORS_ORIGINS", "*")
+
+    with pytest.raises(ValueError, match="Wildcard CORS .* is not allowed in production"):
+        Settings()
+
+def test_production_accepts_specific_frontend_cors(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("DATABASE_URL", "postgres://researchpilot:secretpass@dpg-dbo48h3m8hqs73fgujrg-a:5432/researchpilot_viob")
+    monkeypatch.setenv("CORS_ORIGINS", "https://researchpilot-web.onrender.com")
+
+    s = Settings()
+    assert s.CORS_ORIGINS == ["https://researchpilot-web.onrender.com"]
+
+def test_development_cors_includes_localhost_and_production():
+    s = Settings()
+    assert "https://researchpilot-web.onrender.com" in s.CORS_ORIGINS
+    assert "http://localhost:5173" in s.CORS_ORIGINS
+    assert "http://127.0.0.1:5173" in s.CORS_ORIGINS
+
+
 
