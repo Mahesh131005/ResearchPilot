@@ -23,12 +23,15 @@ class RetrievalService:
         self,
         query: str,
         document_id: Optional[uuid.UUID] = None,
+        document_ids: Optional[List[uuid.UUID]] = None,
         top_k: int = 5,
         threshold: float = 0.0,
+        user_id: Optional[uuid.UUID] = None,
     ) -> List[Dict[str, Any]]:
         """
         Embeds the search query and retrieves the Top-K most relevant chunks using cosine similarity.
         Returns chunk content, exact page number, document filename, and similarity score.
+        Enforces user ownership isolation when user_id is provided, and supports single or multi-document scoping.
         """
         if not query or not query.strip():
             return []
@@ -50,7 +53,12 @@ class RetrievalService:
             .where(DocumentChunk.embedding.isnot(None))
         )
 
-        if document_id:
+        if user_id:
+            stmt = stmt.where(Document.user_id == user_id)
+
+        if document_ids:
+            stmt = stmt.where(DocumentChunk.document_id.in_(document_ids))
+        elif document_id:
             stmt = stmt.where(DocumentChunk.document_id == document_id)
 
         # Order by closest distance (smallest distance = highest similarity)

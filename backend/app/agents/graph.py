@@ -1,4 +1,5 @@
 import datetime
+import uuid
 from typing import Dict, Any, List, Optional
 from langgraph.graph import StateGraph, START, END
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -45,13 +46,37 @@ def create_research_graph(db: AsyncSession):
     async def web_research_node(state: ResearchState) -> Dict[str, Any]:
         plan = state.get("plan") or {}
         sub_questions = plan.get("sub_questions", [])
-        evidence = await web_agent.research(sub_questions)
+        max_searches = state.get("max_tavily_searches") or 5
+
+        try:
+            evidence = await web_agent.research(sub_questions, max_searches=max_searches)
+        except Exception as e:
+            evidence = []
+            event = {
+                "agent_name": "Web Research Agent",
+                "event_type": "web_research_warning",
+                "message": f"Web research degraded gracefully: {str(e)}. Continuing with document evidence.",
+                "payload": {"error": str(e)},
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            }
+            return {
+                "web_evidence": [],
+                "events": [event],
+            }
+
+        msg = f"Collected and verified {len(evidence)} web evidence sources via Tavily."
+        if len(sub_questions) > max_searches:
+            msg += f" (Enforced quota ceiling of {max_searches} Tavily searches per job)."
 
         event = {
             "agent_name": "Web Research Agent",
             "event_type": "web_research_completed",
-            "message": f"Collected and verified {len(evidence)} web evidence sources via Tavily.",
-            "payload": {"source_urls": [e.get("url") for e in evidence if e.get("url")]},
+            "message": msg,
+            "payload": {
+                "source_urls": [e.get("url") for e in evidence if e.get("url")],
+                "searches_configured": len(sub_questions),
+                "searches_allowed": max_searches,
+            },
             "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         }
 
@@ -65,7 +90,19 @@ def create_research_graph(db: AsyncSession):
         plan = state.get("plan") or {}
         sub_questions = plan.get("sub_questions", [])
         doc_ids = state.get("document_ids", [])
-        evidence = await doc_agent.research(sub_questions, document_ids=doc_ids)
+        user_id_str = state.get("user_id")
+        user_uuid = None
+        if user_id_str:
+            try:
+                user_uuid = uuid.UUID(user_id_str)
+            except (ValueError, TypeError):
+                pass
+
+        evidence = await doc_agent.research(
+            sub_questions,
+            document_ids=doc_ids,
+            user_id=user_uuid,
+        )
 
         event = {
             "agent_name": "Document Research Agent",
@@ -85,13 +122,33 @@ def create_research_graph(db: AsyncSession):
         web_ev = state.get("web_evidence") or []
         doc_ev = state.get("document_evidence") or []
 
-        combined = web_ev + doc_ev
+        # Deduplicate and sort combined evidence
+        combined = []
+        seen_keys = set()
+
+        for w in web_ev:
+            canonical_url = (w.get("url") or "").split("#")[0].rstrip("/")
+            if canonical_url and canonical_url not in seen_keys:
+                seen_keys.add(canonical_url)
+                combined.append(w)
+
+        for d in doc_ev:
+            doc_key = f"{d.get('document_id')}:{d.get('page_number')}:{d.get('content')[:80]}"
+            if doc_key not in seen_keys:
+                seen_keys.add(doc_key)
+                combined.append(d)
+
         combined.sort(key=lambda x: x.get("relevance_score", 0.0), reverse=True)
+
+        if not combined:
+            msg = "No evidence retrieved above relevance thresholds. Proceeding with missing evidence disclosure."
+        else:
+            msg = f"Aggregated and normalized {len(combined)} total evidence items ({len(web_ev)} web, {len(doc_ev)} document)."
 
         event = {
             "agent_name": "Evidence Normalizer",
             "event_type": "evidence_normalized",
-            "message": f"Aggregated and normalized {len(combined)} total evidence items ({len(web_ev)} web, {len(doc_ev)} document).",
+            "message": msg,
             "payload": {
                 "total_evidence": len(combined),
                 "web_count": len(web_ev),

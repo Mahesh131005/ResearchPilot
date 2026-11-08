@@ -1,0 +1,148 @@
+{
+  "name": "researchpilot-vscode",
+  "displayName": "ResearchPilot",
+  "description": "Institutional-Grade Multi-Agent AI Research & Fact-Checking Assistant for VS Code",
+  "version": "0.1.0",
+  "icon": "media/icon.png",
+  "publisher": "ResearchPilot",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "AI",
+    "Machine Learning",
+    "Productivity"
+  ],
+  "keywords": [
+    "research",
+    "multi-agent",
+    "fact-checker",
+    "rag",
+    "langgraph",
+    "ai"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onView:researchpilot.sidebar",
+    "onCommand:researchpilot.startResearch",
+    "onCommand:researchpilot.researchSelection",
+    "onCommand:researchpilot.login",
+    "onCommand:researchpilot.logout",
+    "onCommand:researchpilot.viewUsage",
+    "onCommand:researchpilot.refreshHistory",
+    "onCommand:researchpilot.saveReportMarkdown"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "researchpilot-activitybar",
+          "title": "ResearchPilot",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "researchpilot-activitybar": [
+        {
+          "type": "webview",
+          "id": "researchpilot.sidebar",
+          "name": "ResearchPilot",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "researchpilot.startResearch",
+        "title": "ResearchPilot: Start New Research",
+        "category": "ResearchPilot"
+      },
+      {
+        "command": "researchpilot.researchSelection",
+        "title": "ResearchPilot: Research Selected Text",
+        "category": "ResearchPilot"
+      },
+      {
+        "command": "researchpilot.saveReportMarkdown",
+        "title": "ResearchPilot: Save Active Report as Markdown",
+        "category": "ResearchPilot"
+      },
+      {
+        "command": "researchpilot.login",
+        "title": "ResearchPilot: Log In to Platform",
+        "category": "ResearchPilot"
+      },
+      {
+        "command": "researchpilot.logout",
+        "title": "ResearchPilot: Log Out",
+        "category": "ResearchPilot"
+      },
+      {
+        "command": "researchpilot.viewUsage",
+        "title": "ResearchPilot: View Quotas & Usage",
+        "category": "ResearchPilot"
+      },
+      {
+        "command": "researchpilot.refreshHistory",
+        "title": "ResearchPilot: Refresh Research History",
+        "category": "ResearchPilot"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "researchpilot.researchSelection",
+          "when": "editorHasSelection",
+          "group": "ResearchPilot@1"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "researchpilot.refreshHistory",
+          "when": "view == researchpilot.sidebar",
+          "group": "navigation"
+        },
+        {
+          "command": "researchpilot.viewUsage",
+          "when": "view == researchpilot.sidebar",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "ResearchPilot",
+      "properties": {
+        "researchpilot.backendUrl": {
+          "type": "string",
+          "default": "http://localhost:8000",
+          "description": "FastAPI backend base URL for ResearchPilot"
+        },
+        "researchpilot.defaultDepth": {
+          "type": "string",
+          "enum": [
+            "quick",
+            "standard",
+            "deep"
+          ],
+          "default": "standard",
+          "description": "Default research depth for newly created jobs"
+        },
+        "researchpilot.enableWeb": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable external web research (Tavily)"
+        },
+        "researchpilot.enableDocuments": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable internal document RAG retrieval (pgvector)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "test": "node --test test/**/*.test.js"
+  },
+  "devDependencies": {}
+}

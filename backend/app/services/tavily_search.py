@@ -1,8 +1,10 @@
 import os
+import hashlib
 from typing import List, Dict, Any, Optional
 from tavily import TavilyClient
 
 from app.core.config import settings
+from app.services.usage_service import UsageService
 from app.core.errors import (
     ProviderAuthenticationError,
     ProviderQuotaError,
@@ -39,7 +41,9 @@ class TavilySearchService:
 
         # Strict Mock Mode
         if mode == "mock":
-            return self._mock_web_search(query)
+            results = self._mock_web_search(query)
+            await self._record_search_usage(query, search_depth, len(results), is_live=False)
+            return results
 
         # Strict Live Mode without Key
         if mode == "live" and not self.client:
@@ -50,7 +54,9 @@ class TavilySearchService:
 
         # Auto Mode without Key -> Graceful Mock
         if not self.client:
-            return self._mock_web_search(query)
+            results = self._mock_web_search(query)
+            await self._record_search_usage(query, search_depth, len(results), is_live=False)
+            return results
 
         # Live Mode / Authenticated Call
         try:
@@ -79,6 +85,7 @@ class TavilySearchService:
                     "score": item.get("score", 0.8),
                     "is_mock": False,
                 })
+            await self._record_search_usage(query, search_depth, len(results), is_live=True)
             return results
 
         except Exception as e:
@@ -95,6 +102,25 @@ class TavilySearchService:
                 raise ProviderAPIError(
                     f"Tavily API search failed: {err_str}"
                 ) from e
+
+    async def _record_search_usage(self, query: str, search_depth: str, count: int, is_live: bool):
+        try:
+            from app.core.usage_context import get_usage_context
+            ctx = get_usage_context()
+            scope = ctx.get("job_id") or ctx.get("user_id") or "global"
+            q_hash = hashlib.sha256(query.strip().lower().encode("utf-8")).hexdigest()[:16]
+            await UsageService.record_from_context(
+                provider="tavily",
+                operation_type="web_search",
+                request_count=1,
+                search_depth=search_depth,
+                is_estimated=not is_live,
+                usage_metadata_available=True,
+                idempotency_key=f"tavily:{scope}:{q_hash}",
+                meta_info={"query": query[:120], "is_mock": not is_live, "result_count": count},
+            )
+        except Exception:
+            pass
 
     def _mock_web_search(self, query: str) -> List[Dict[str, Any]]:
         """

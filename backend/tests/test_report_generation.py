@@ -82,12 +82,12 @@ async def test_report_writer_agent():
     assert len(report.references) > 0
 
 @pytest.mark.asyncio
-async def test_end_to_end_research_report_api(async_client, sample_pdf_bytes):
+async def test_end_to_end_research_report_api(auth_client, sample_pdf_bytes):
     # 1. Upload sample PDF
     files = {
         "file": ("stage4_test_doc.pdf", io.BytesIO(sample_pdf_bytes), "application/pdf")
     }
-    upload_res = await async_client.post("/api/v1/documents/upload", files=files)
+    upload_res = await auth_client.post("/api/v1/documents/upload", files=files)
     assert upload_res.status_code == 201
     doc_id = upload_res.json()["id"]
 
@@ -100,21 +100,21 @@ async def test_end_to_end_research_report_api(async_client, sample_pdf_bytes):
             "enable_documents": True,
             "document_ids": [doc_id]
         }
-        res = await async_client.post("/api/v1/research/jobs", json=job_req)
+        res = await auth_client.post("/api/v1/research/jobs", json=job_req)
         assert res.status_code == 201
         job_id = res.json()["id"]
 
         # 3. Poll for completion (background asyncio task)
         for _ in range(20):
             await asyncio.sleep(0.5)
-            status_res = await async_client.get(f"/api/v1/research/jobs/{job_id}")
+            status_res = await auth_client.get(f"/api/v1/research/jobs/{job_id}")
             if status_res.json()["status"] in ["completed", "failed"]:
                 break
 
         assert status_res.json()["status"] == "completed"
 
         # 4. Get completed report
-        report_res = await async_client.get(f"/api/v1/research/jobs/{job_id}/report")
+        report_res = await auth_client.get(f"/api/v1/research/jobs/{job_id}/report")
         assert report_res.status_code == 200
         report = report_res.json()
 
@@ -140,7 +140,7 @@ async def test_end_to_end_research_report_api(async_client, sample_pdf_bytes):
         assert doc_refs[0]["page_number"] in [1, 2]
 
         # 5. Download and validate PDF report stream
-        pdf_res = await async_client.get(f"/api/v1/research/jobs/{job_id}/pdf")
+        pdf_res = await auth_client.get(f"/api/v1/research/jobs/{job_id}/pdf")
         assert pdf_res.status_code == 200
         assert pdf_res.headers["content-type"] == "application/pdf"
         assert "attachment" in pdf_res.headers["content-disposition"]
@@ -148,5 +148,5 @@ async def test_end_to_end_research_report_api(async_client, sample_pdf_bytes):
         assert len(pdf_res.content) > 1000
 
     finally:
-        await async_client.delete(f"/api/v1/documents/{doc_id}")
+        await auth_client.delete(f"/api/v1/documents/{doc_id}")
 

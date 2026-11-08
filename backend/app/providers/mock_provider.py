@@ -4,6 +4,7 @@ from typing import List, Optional, Type, TypeVar, Any
 from pydantic import BaseModel
 
 from app.providers.base import EmbeddingProvider, LLMProvider
+from app.services.usage_service import UsageService
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -40,9 +41,28 @@ class MockEmbeddingProvider(EmbeddingProvider):
         return vector
 
     async def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        total_tokens = sum(len(t.split()) for t in texts)
+        await UsageService.record_from_context(
+            provider="gemini",
+            operation_type="embedding",
+            model_name="mock-gemini-embedding-001",
+            embedding_tokens=total_tokens,
+            is_estimated=True,
+            usage_metadata_available=False,
+            meta_info={"is_mock": True, "text_count": len(texts)},
+        )
         return [self._hash_text_to_vector(t) for t in texts]
 
     async def embed_query(self, text: str) -> List[float]:
+        await UsageService.record_from_context(
+            provider="gemini",
+            operation_type="embedding",
+            model_name="mock-gemini-embedding-001",
+            embedding_tokens=len(text.split()),
+            is_estimated=True,
+            usage_metadata_available=False,
+            meta_info={"is_mock": True, "text_count": 1},
+        )
         return self._hash_text_to_vector(text)
 
 
@@ -65,17 +85,30 @@ class MockLLMProvider(LLMProvider):
     ) -> str:
         # Check if context contains text from our sample document
         if "Reserve Bank of India" in prompt or "regulatory" in prompt.lower():
-            return (
+            res = (
                 "[MOCK SYNTHESIS] According to guidelines from the Reserve Bank of India, financial institutions must prioritize "
                 "algorithmic governance, data privacy, and explainability [Page 2]."
             )
         elif "Indian banking" in prompt or "generative" in prompt.lower():
-            return (
+            res = (
                 "[MOCK SYNTHESIS] Generative AI has transitioned into a strategic driver for Indian banks, powering applications "
                 "in fraud detection, automated customer service, and credit evaluation [Page 1]."
             )
         else:
-            return "[MOCK SYNTHESIS] Based on the provided document evidence, the topic was analyzed [Page 1]."
+            res = "[MOCK SYNTHESIS] Based on the provided document evidence, the topic was analyzed [Page 1]."
+
+        await UsageService.record_from_context(
+            provider="gemini",
+            operation_type="llm_generation",
+            model_name="mock-gemini-2.5-flash",
+            input_tokens=len(prompt.split()),
+            output_tokens=len(res.split()),
+            total_tokens=len(prompt.split()) + len(res.split()),
+            is_estimated=True,
+            usage_metadata_available=False,
+            meta_info={"is_mock": True},
+        )
+        return res
 
     async def generate_structured(
         self,
@@ -85,6 +118,18 @@ class MockLLMProvider(LLMProvider):
         temperature: float = 0.1,
     ) -> T:
         schema_name = schema.__name__
+
+        await UsageService.record_from_context(
+            provider="gemini",
+            operation_type="structured_generation",
+            model_name="mock-gemini-2.5-flash",
+            input_tokens=len(prompt.split()),
+            output_tokens=350,
+            total_tokens=len(prompt.split()) + 350,
+            is_estimated=True,
+            usage_metadata_available=False,
+            meta_info={"is_mock": True, "schema": schema_name},
+        )
 
         # Mock Plan Generation
         if schema_name == "ResearchPlan":
@@ -103,25 +148,29 @@ class MockLLMProvider(LLMProvider):
                         id="sq-1",
                         question=f"What are the core technical foundations and adoption metrics regarding {prompt[:40].strip()}?",
                         focus_area="Technology & Adoption",
-                        source_type="both"
+                        source_type="both",
+                        search_query=f"Generative AI Indian banking adoption {prompt[:30].strip()}",
                     ),
                     SubQuestion(
                         id="sq-2",
                         question="What regulatory, supervisory, and compliance frameworks govern this technology?",
                         focus_area="Regulatory Compliance",
-                        source_type="both"
+                        source_type="both",
+                        search_query="Reserve Bank of India regulatory compliance guidelines governance",
                     ),
                     SubQuestion(
                         id="sq-3",
                         question="What are the key market opportunities, cost savings, and operational risk factors?",
                         focus_area="Market Dynamics & Risk",
-                        source_type="both"
+                        source_type="both",
+                        search_query="market opportunities cost savings operational risk factors",
                     ),
                     SubQuestion(
                         id="sq-4",
                         question="What are the contradictory viewpoints and 5-year industry projections?",
                         focus_area="Strategic Outlook",
-                        source_type="both"
+                        source_type="both",
+                        search_query="contradictory viewpoints future industry projections",
                     ),
                 ]
             )

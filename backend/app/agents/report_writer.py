@@ -36,6 +36,54 @@ class ReportWriterAgent:
         evidence_items: List[Dict[str, Any]],
         claims: List[FactCheckedClaim],
     ) -> ResearchReportSchema:
+        if not evidence_items:
+            unsupported_claim = (
+                claims[0]
+                if claims
+                else FactCheckedClaim(
+                    claim_text=f"Research on '{query}' lacks verifiable empirical evidence.",
+                    verification_status="unsupported",
+                    confidence_score=0.95,
+                    reasoning="No relevant sources were retrieved from web searches or indexed documents above relevance thresholds.",
+                )
+            )
+            return ResearchReportSchema(
+                title=f"Research Report: {query} (Insufficient Evidence)",
+                executive_summary=(
+                    f"Insufficient empirical evidence was retrieved from the selected sources to answer the research inquiry "
+                    f"\"{query}\" with scientific certainty. Neither external web searches nor uploaded document repositories "
+                    f"contained matching evidence above the required relevance threshold. "
+                    f"Please review the missing evidence disclosure and consider broadening the query or uploading primary source documents."
+                ),
+                industry_overview=(
+                    f"While the topic '{query}' represents an active domain of interest, automated multi-agent retrieval "
+                    f"did not surface sufficient primary source documentation in the current knowledge repository to support "
+                    f"substantive analytical claims."
+                ),
+                key_findings=[
+                    f"No empirical evidence meeting quality thresholds was retrieved for: \"{query}\".",
+                    "All formulated research sub-questions were evaluated against accessible document and web sources but lacked sufficient evidentiary backing.",
+                    "To prevent hallucination, the research engine has abstained from asserting speculative findings.",
+                ],
+                opportunities=[
+                    "Upload authoritative reference documents (PDFs, reports, benchmark papers) into the Knowledge Base.",
+                    "Refine the research question with specific entity names, standard benchmark acronyms, or quantitative metrics.",
+                ],
+                risks_and_challenges=[
+                    "Synthesizing conclusions without verified primary sources introduces high risk of factual inaccuracy and compliance failure.",
+                    "Reliance on ungrounded or speculative assertions can mislead executive and technical decision-makers.",
+                ],
+                contradictory_findings=[
+                    "No contradictory findings could be established due to the total absence of empirical source documents.",
+                ],
+                future_outlook=(
+                    "Authoritative synthesis and empirical analysis will become feasible once relevant primary source "
+                    "documentation or broadened search parameters are supplied."
+                ),
+                claims=claims if claims else [unsupported_claim],
+                references=[],
+            )
+
         # Build references list
         references = []
         for idx, ev in enumerate(evidence_items, 1):

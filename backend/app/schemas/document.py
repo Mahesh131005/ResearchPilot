@@ -23,6 +23,7 @@ class DocumentChunkResponse(BaseModel):
 
 class DocumentResponse(DocumentBase):
     id: uuid.UUID
+    user_id: Optional[uuid.UUID] = None
     status: str
     page_count: Optional[int] = None
     total_chunks: int = 0

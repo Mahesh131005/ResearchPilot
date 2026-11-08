@@ -10,6 +10,9 @@ class SubQuestion(BaseModel):
     source_type: Literal["both", "web", "document"] = Field(
         "both", description="Target source category for this sub-question"
     )
+    search_query: Optional[str] = Field(
+        None, description="Concise, optimized keyword search query tailored for web or vector retrieval"
+    )
 
 class ResearchPlan(BaseModel):
     title: str = Field(..., description="Formal title for the research report")
@@ -34,6 +37,7 @@ class ResearchJobCreate(BaseModel):
     enable_web: bool = Field(True, description="Enable external web research via Tavily")
     enable_documents: bool = Field(True, description="Enable RAG retrieval over uploaded PDFs")
     document_ids: List[uuid.UUID] = Field(default_factory=list, description="Selected documents to include")
+    client_token: Optional[str] = Field(None, description="Idempotency token to prevent double-counting upon retries")
 
 class ResearchEventResponse(BaseModel):
     id: uuid.UUID
@@ -48,9 +52,13 @@ class ResearchEventResponse(BaseModel):
 
 class ResearchJobResponse(BaseModel):
     id: uuid.UUID
+    user_id: Optional[uuid.UUID] = None
+    client_token: Optional[str] = None
     query: str
     depth: str
     status: str
+    cost_usd: Optional[float] = None
+    budget_reserved_usd: Optional[float] = None
     plan: Optional[Dict[str, Any]] = None
     error_message: Optional[str] = None
     created_at: datetime

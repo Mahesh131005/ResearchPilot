@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { researchApi, documentApi, systemApi } from "@/services/api";
+import { useNavigate, Link } from "react-router-dom";
+import { researchApi, documentApi, systemApi, billingApi } from "@/services/api";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import {
   AlertCircle,
   HelpCircle,
   Cpu,
+  Wallet,
 } from "lucide-react";
 
 export function NewResearch() {
@@ -29,12 +30,16 @@ export function NewResearch() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [systemStatus, setSystemStatus] = useState(null);
+  const [wallet, setWallet] = useState(null);
 
   useEffect(() => {
     loadDocs();
     systemApi.getStatus()
       .then((data) => setSystemStatus(data))
       .catch((err) => console.error("Failed to load system status", err));
+    billingApi.getWallet()
+      .then((w) => setWallet(w))
+      .catch((err) => console.warn("Failed to load wallet balance", err));
   }, []);
 
   const loadDocs = async () => {
@@ -92,11 +97,24 @@ export function NewResearch() {
 
   return (
     <div className="container py-8 space-y-8 px-6 max-w-4xl">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Initiate New Research</h1>
-        <p className="text-muted-foreground mt-1">
-          Configure a multi-agent investigation combining live external web research and document RAG.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Initiate New Research</h1>
+          <p className="text-muted-foreground mt-1">
+            Configure a multi-agent investigation combining live external web research and document RAG.
+          </p>
+        </div>
+        {wallet && (
+          <div className="flex items-center gap-2">
+            <Link to="/billing">
+              <Badge variant="outline" className="px-3 py-1.5 flex items-center gap-1.5 text-xs font-semibold hover:bg-secondary cursor-pointer">
+                <Wallet className="h-3.5 w-3.5 text-emerald-500" />
+                <span>${wallet.available_balance_usd.toFixed(2)} Available</span>
+                <span className="text-[10px] text-muted-foreground">($0.05 hold/job)</span>
+              </Badge>
+            </Link>
+          </div>
+        )}
       </div>
 
       {systemStatus && (
@@ -118,9 +136,27 @@ export function NewResearch() {
       )}
 
       {error && (
-        <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive flex items-center gap-2">
-          <AlertCircle className="h-4 w-4 flex-shrink-0" />
-          <span>{error}</span>
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive flex items-start justify-between gap-3 shadow-sm">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+          {(error.includes("limit") || error.includes("quota") || error.includes("Concurrency")) && (
+            <Link
+              to="/usage"
+              className="text-xs font-semibold underline hover:text-foreground shrink-0 mt-0.5 bg-destructive/10 px-2 py-1 rounded"
+            >
+              View Quotas &rarr;
+            </Link>
+          )}
+          {(error.includes("Insufficient") || error.includes("balance") || error.includes("credit") || error.includes("funds")) && (
+            <Link
+              to="/billing"
+              className="text-xs font-semibold underline hover:text-foreground shrink-0 mt-0.5 bg-destructive/10 px-2 py-1 rounded"
+            >
+              Top Up Credits &rarr;
+            </Link>
+          )}
         </div>
       )}
 

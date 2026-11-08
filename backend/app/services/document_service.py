@@ -59,7 +59,7 @@ class DocumentService:
         await file.seek(0)
         return file.filename, file_size
 
-    async def create_document(self, file: UploadFile) -> Document:
+    async def create_document(self, file: UploadFile, user_id: Optional[uuid.UUID] = None) -> Document:
         """Stores physical file and creates document record, extracts text, chunks, and embeds."""
         filename, file_size = await self.validate_upload(file)
 
@@ -72,6 +72,7 @@ class DocumentService:
 
         document = Document(
             id=doc_id,
+            user_id=user_id,
             filename=filename,
             file_path=str(save_path),
             file_size=file_size,
@@ -125,7 +126,7 @@ class DocumentService:
 
         return document
 
-    async def list_documents(self) -> List[Dict[str, Any]]:
+    async def list_documents(self, user_id: Optional[uuid.UUID] = None) -> List[Dict[str, Any]]:
         """Lists all documents annotated with chunk count."""
         query = (
             select(
@@ -133,9 +134,11 @@ class DocumentService:
                 func.count(DocumentChunk.id).label("total_chunks")
             )
             .outerjoin(DocumentChunk, Document.id == DocumentChunk.document_id)
-            .group_by(Document.id)
-            .order_by(Document.created_at.desc())
         )
+        if user_id:
+            query = query.where(Document.user_id == user_id)
+
+        query = query.group_by(Document.id).order_by(Document.created_at.desc())
         result = await self.db.execute(query)
         rows = result.all()
 
@@ -143,6 +146,7 @@ class DocumentService:
         for doc, total_chunks in rows:
             output.append({
                 "id": doc.id,
+                "user_id": doc.user_id,
                 "filename": doc.filename,
                 "file_size": doc.file_size,
                 "page_count": doc.page_count,
@@ -155,7 +159,7 @@ class DocumentService:
             })
         return output
 
-    async def get_document(self, document_id: uuid.UUID) -> Optional[Dict[str, Any]]:
+    async def get_document(self, document_id: uuid.UUID, user_id: Optional[uuid.UUID] = None) -> Optional[Dict[str, Any]]:
         """Gets a single document by ID with chunk count."""
         query = (
             select(
@@ -164,8 +168,11 @@ class DocumentService:
             )
             .outerjoin(DocumentChunk, Document.id == DocumentChunk.document_id)
             .where(Document.id == document_id)
-            .group_by(Document.id)
         )
+        if user_id:
+            query = query.where(Document.user_id == user_id)
+
+        query = query.group_by(Document.id)
         result = await self.db.execute(query)
         row = result.first()
         if not row:
@@ -173,6 +180,7 @@ class DocumentService:
         doc, total_chunks = row
         return {
             "id": doc.id,
+            "user_id": doc.user_id,
             "filename": doc.filename,
             "file_size": doc.file_size,
             "page_count": doc.page_count,
@@ -184,8 +192,15 @@ class DocumentService:
             "updated_at": doc.updated_at,
         }
 
-    async def get_document_chunks(self, document_id: uuid.UUID) -> List[DocumentChunk]:
-        """Returns all chunks for a document ordered by index."""
+    async def get_document_chunks(self, document_id: uuid.UUID, user_id: Optional[uuid.UUID] = None) -> Optional[List[DocumentChunk]]:
+        """Returns all chunks for a document ordered by index, verifying ownership."""
+        doc_stmt = select(Document.id).where(Document.id == document_id)
+        if user_id:
+            doc_stmt = doc_stmt.where(Document.user_id == user_id)
+        doc_res = await self.db.execute(doc_stmt)
+        if not doc_res.scalar_one_or_none():
+            return None
+
         query = (
             select(DocumentChunk)
             .where(DocumentChunk.document_id == document_id)
@@ -194,9 +209,11 @@ class DocumentService:
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
-    async def delete_document(self, document_id: uuid.UUID) -> bool:
+    async def delete_document(self, document_id: uuid.UUID, user_id: Optional[uuid.UUID] = None) -> bool:
         """Deletes a document and its associated physical file and chunks."""
         query = select(Document).where(Document.id == document_id)
+        if user_id:
+            query = query.where(Document.user_id == user_id)
         result = await self.db.execute(query)
         doc = result.scalar_one_or_none()
         if not doc:

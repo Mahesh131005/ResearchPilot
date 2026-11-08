@@ -219,20 +219,57 @@ Navigate to `http://localhost:5173`.
 
 ## API Reference
 
+### Authentication & User Management
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/api/v1/health` | Health check and database connectivity probe |
-| `POST` | `/api/v1/documents/upload` | Upload and chunk PDF, compute pgvector embeddings |
-| `GET` | `/api/v1/documents` | List all uploaded documents with chunk counts |
-| `GET` | `/api/v1/documents/{id}` | Get document metadata and processing status |
+| `POST` | `/api/v1/auth/register` | Register new user account (returns JWT access & refresh tokens) |
+| `POST` | `/api/v1/auth/login` | Authenticate with email/password; returns access/refresh tokens and `must_change_password` status |
+| `POST` | `/api/v1/auth/refresh` | Rotate refresh token with reuse theft detection; issues new access/refresh pair |
+| `POST` | `/api/v1/auth/logout` | Revoke active refresh token session |
+| `POST` | `/api/v1/auth/change-password` | Update user password, clear `must_change_password` requirement |
+| `GET` | `/api/v1/auth/me` | Retrieve authenticated user profile, tier, and role |
+| `GET` | `/api/v1/auth/users` | (Admin) List registered users across the platform |
+| `PATCH` | `/api/v1/auth/users/{id}` | (Admin) Update user role, subscription tier, or active status |
+
+### Usage Telemetry & Quota Enforcement (Stage 2)
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/usage/me` | Current user quota telemetry, token breakdowns, and reset timers |
+| `GET` | `/api/v1/usage/history` | Paginated provider usage audit events isolated to authenticated user |
+| `GET` | `/api/v1/usage/limits` | Effective rate limits and daily/monthly quotas for user's tier |
+| `GET` | `/api/v1/admin/usage` | (Admin) Platform-wide aggregate token, search, and job telemetry |
+| `GET` | `/api/v1/admin/usage/users` | (Admin) Per-user usage breakdown across all registered users |
+
+### Billing, Monetary Wallets & Monetization (Stage 6)
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/billing/wallet` | Credit wallet balance, reserved holds ($0.05/job), and lifetime spend |
+| `GET` | `/api/v1/billing/overview` | Complete billing overview (wallet, ledger, pricing matrix, circuit breaker) |
+| `GET` | `/api/v1/billing/transactions` | Full itemized double-entry financial ledger history |
+| `POST` | `/api/v1/billing/checkout` | Create Stripe Checkout Session to top up prepaid research credits |
+| `POST` | `/api/v1/billing/webhook` | Idempotent Stripe webhook receiver with cryptographic signature validation |
+| `GET` | `/api/v1/billing/admin/financials/overview` | (Admin) Global spending caps, daily/monthly totals, and system balances |
+| `GET` | `/api/v1/billing/admin/financials/users` | (Admin) Per-user financial breakdown across all platform wallets |
+| `GET` | `/api/v1/billing/admin/pricing` | (Admin) Complete versioned provider pricing matrix |
+| `POST` | `/api/v1/billing/admin/pricing` | (Admin) Create new versioned pricing rate, dynamically archiving prior rates |
+
+### Research, Documents & QA (Per-User Scoped)
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/v1/health` | Liveness probe: process responsiveness and basic DB connectivity |
+| `GET` | `/api/v1/health/ready` | Readiness probe: validates DB connection pool, upload storage write access, billable status |
+| `GET` | `/api/v1/system/metrics` | Telemetry probe: uptime, memory RSS, job execution counters, token usage (JSON & Prometheus) |
+| `POST` | `/api/v1/documents/upload` | Upload and chunk PDF, compute pgvector embeddings (scoped to user) |
+| `GET` | `/api/v1/documents` | List uploaded documents with chunk counts for current user |
+| `GET` | `/api/v1/documents/{id}` | Get document metadata (returns 404 for unowned documents) |
 | `GET` | `/api/v1/documents/{id}/chunks` | Inspect parsed text chunks, token lengths, and page numbers |
-| `DELETE` | `/api/v1/documents/{id}` | Delete document and cascade delete vector chunks |
-| `POST` | `/api/v1/qa/query` | Grounded semantic Q&A with physical page citations |
-| `POST` | `/api/v1/qa/search` | Raw pgvector cosine similarity search across chunks |
-| `POST` | `/api/v1/research/jobs` | Launch LangGraph multi-agent research workflow |
-| `GET` | `/api/v1/research/jobs` | List recent research jobs |
-| `GET` | `/api/v1/research/jobs/{id}` | Get research job status, metrics, and plan |
-| `GET` | `/api/v1/research/jobs/{id}/events` | Get execution event timeline |
+| `DELETE` | `/api/v1/documents/{id}` | Delete document and cascade delete vector chunks (scoped to user) |
+| `POST` | `/api/v1/qa/query` | Grounded semantic Q&A with physical page citations (user-isolated) |
+| `POST` | `/api/v1/qa/search` | Raw pgvector cosine similarity search across chunks (user-isolated) |
+| `POST` | `/api/v1/research/jobs` | Launch LangGraph research workflow (enforces rate limits & quotas) |
+| `GET` | `/api/v1/research/jobs` | List recent research jobs for current user |
+| `GET` | `/api/v1/research/jobs/{id}` | Get research job status, metrics, and plan (returns 404 for unowned jobs) |
+| `GET` | `/api/v1/research/jobs/{id}/events` | Get execution event timeline (scoped to job owner) |
 | `GET` | `/api/v1/research/jobs/{id}/report` | Retrieve completed 9-section report and claims audit |
 | `GET` | `/api/v1/research/jobs/{id}/pdf` | Generate and download publication-ready institutional PDF report |
 | `GET` | `/api/v1/research/jobs/{id}/stream` | Server-Sent Events (SSE) live progress updates |
@@ -241,30 +278,51 @@ Navigate to `http://localhost:5173`.
 
 ## Running the Automated Test Suite
 
-### Backend Tests (21 Unit & Integration Tests)
+### Full Repository Verification (109 Tests Total, 100% Passing)
+
+#### Backend Tests (72 Unit, Security, Quota, Evaluation, Production Readiness & Billing Tests)
 ```bash
 cd backend
 pytest -v
 ```
 
-### Frontend Tests (Vitest)
+#### Dedicated Evaluation Benchmarks (Multi-Category Ranking, MRR, nDCG, Fact-Checking Rigor)
 ```bash
-cd frontend
-npm test
+cd backend
+pytest tests/test_evaluation.py -v
 ```
 
-### Frontend Production Build
+#### Frontend Tests (12 Vitest Tests)
+```bash
+cd frontend
+npm test -- --run
+```
+
+#### Frontend Production Build
 ```bash
 cd frontend
 npm run build
 ```
 
+#### VS Code Extension Tests (25 Native Node.js Tests including Live TCP Integration)
+```bash
+cd vscode-extension
+npm test
+```
+
 ---
 
-## Evaluation & Benchmark Report
+## Documentation & Operational Runbooks
 
-For in-depth benchmark metrics regarding RAG retrieval Precision@K / Recall@K, citation faithfulness, and adversarial prompt injection defenses, see [EVALUATION.md](file:///f:/Research%20Agent/EVALUATION.md).
-
-For architectural decision records, see [DECISIONS.md](file:///f:/Research%20Agent/DECISIONS.md).
-
-For full milestone changelog across all 5 stages, see [PROJECT_LOG.md](file:///f:/Research%20Agent/PROJECT_LOG.md).
+- **[FINAL_AUDIT.md](file:///f:/Research%20Agent/FINAL_AUDIT.md)**: Final codebase audit resolving all 7 identified findings, vulnerabilities, and hardening items.
+- **[FINAL_TEST_REPORT.md](file:///f:/Research%20Agent/FINAL_TEST_REPORT.md)**: Full breakdown of all 109 automated tests across backend, frontend, and extension with execution times.
+- **[RELEASE_CHECKLIST.md](file:///f:/Research%20Agent/RELEASE_CHECKLIST.md)**: Complete local running guide (Docker Compose / WSL PostgreSQL) and public production release checklist.
+- **[KNOWN_LIMITATIONS.md](file:///f:/Research%20Agent/KNOWN_LIMITATIONS.md)**: Transparent operational boundaries, provider free-tier quotas, Stripe test mode, and scaling considerations.
+- **[ARCHITECTURE.md](file:///f:/Research%20Agent/ARCHITECTURE.md)**: Full layered system architecture, ER diagrams, security isolation model, multi-agent coordination, and closed-loop billing lifecycle.
+- **[COST_MANAGEMENT_AND_MONETIZATION.md](file:///f:/Research%20Agent/docs/COST_MANAGEMENT_AND_MONETIZATION.md)**: Pricing matrix, atomic budget reservations ($0.05/job), global spending caps, double-entry financial ledger, and Stripe integration.
+- **[SCALING_STRATEGY.md](file:///f:/Research%20Agent/docs/SCALING_STRATEGY.md)**: Component topology, PgBouncer pool sizing, KEDA queue depth triggers, graceful shutdown, and container resource limits.
+- **[SECURITY_AND_PRIVACY.md](file:///f:/Research%20Agent/docs/SECURITY_AND_PRIVACY.md)**: Multi-tenancy isolation, anti-enumeration 404 standards, prompt injection boundaries (`<<<UNTRUSTED_EVIDENCE_BOUNDARY>>>`), and emergency kill-switch operational procedures.
+- **[VSCODE_EXTENSION_ARCHITECTURE.md](file:///f:/Research%20Agent/docs/VSCODE_EXTENSION_ARCHITECTURE.md)**: VS Code extension design, SecretStorage credential security, and live SSE streaming integration.
+- **[EVALUATION.md](file:///f:/Research%20Agent/EVALUATION.md)**: Quantitative retrieval benchmarks (MRR = 0.9167, nDCG@3 = 0.8891), citation faithfulness, cross-user data isolation, and adversarial prompt injection defenses.
+- **[DECISIONS.md](file:///f:/Research%20Agent/DECISIONS.md)**: 21 Architectural Decision Records (ADRs) tracking architectural evolution through final release readiness.
+- **[PROJECT_LOG.md](file:///f:/Research%20Agent/PROJECT_LOG.md)**: Comprehensive milestone changelog across all 6 development stages and final release consolidation.

@@ -27,6 +27,8 @@ yarn-error.log*
 # Uploads & Temp
 backend/uploads/*
 !backend/uploads/.gitkeep
+backend/backend/uploads/*
+*.sql
 scratch/
 
 # IDE & OS

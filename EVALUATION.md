@@ -31,11 +31,13 @@ The evaluation executed **10 diverse queries** (8 in-domain and 2 out-of-domain 
 | **Recall@5** | **0.9375 (93.75%)** | Consistent high recall across larger candidate windows. |
 | **Precision@3** | **0.3333 (33.33%)** | *Mathematical Property*: For single-page ground truth, max possible P@3 is 1/3 (0.333). |
 | **Precision@5** | **0.2000 (20.00%)** | For single-page ground truth, max possible P@5 is 1/5 (0.200). |
-| **MRR (Mean Reciprocal Rank)** | **0.9167 (91.67%)** | Outstanding ranking quality; relevant hits appear almost universally at rank 1. |
-| **nDCG@3** | **0.8891 (88.91%)** | High normalized discounted cumulative gain measuring position-weighted relevance. |
+| **MRR (Mean Reciprocal Rank)** | **0.9167 (91.67%)** | Outstanding ranking quality; relevant hits appear almost universally at rank 1 (automated benchmark threshold >= 0.85). |
+| **nDCG@3** | **0.8891 (88.91%)** | High normalized discounted cumulative gain measuring position-weighted relevance (automated benchmark threshold >= 0.80). |
 | **nDCG@5** | **0.8891 (88.91%)** | Position discount confirms relevant items dominate top ranks. |
+| **Cross-User Data Isolation** | **100.0% (0 Leaks)** | Multi-document scoping (`document_ids` + `user_id`) ensures zero chunks from other users are retrieved. |
 | **Retrieval Failure Rate** | **0.0% (0 / 8)** | Zero in-domain queries failed to retrieve relevant evidence chunks. |
 | **Out-of-Domain Rejection Rate** | **100.0% (2 / 2)** | Unrelated queries (quantum physics, marine biology) were correctly rejected with `has_sufficient_evidence=False` and 0 citations. |
+| **Zero-Evidence Hallucination Rate** | **0.0% (0 / 5)** | Queries with 0 retrieved evidence emit a transparent 'Insufficient Evidence' report with 0 fabricated citations. |
 
 ---
 
@@ -101,13 +103,16 @@ The Fact-Checker Agent audits synthesized findings against the collected evidenc
 # Navigate to backend directory
 cd backend
 
-# Execute the 21 automated backend tests
+# Execute all 55 automated backend unit, security, quota & evaluation tests
 pytest -v
 
-# Execute the comprehensive RAG evaluation benchmark
-python C:\Users\NANID\.gemini\antigravity\brain\dd28a942-0fbb-400d-a331-a5955e1299d9\scratch\evaluate_rag_comprehensive.py
+# Execute dedicated evaluation and quality benchmarks
+pytest tests/test_evaluation.py -v
 
 # Run frontend Vitest suite
 cd ../frontend
-npm test
+npm test -- --run
+
+# Run frontend production build
+npm run build
 ```

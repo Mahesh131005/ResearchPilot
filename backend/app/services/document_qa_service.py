@@ -30,15 +30,16 @@ class DocumentQAService:
         self.retrieval_service = retrieval_service or RetrievalService(db, embedding_provider=emb)
         self.llm_provider = llm_provider or get_llm_provider()
 
-    async def answer_query(self, request: DocumentQueryRequest) -> DocumentQueryResponse:
+    async def answer_query(self, request: DocumentQueryRequest, user_id: Optional[uuid.UUID] = None) -> DocumentQueryResponse:
         threshold = request.threshold if request.threshold is not None else settings.SIMILARITY_THRESHOLD
 
-        # 1. Semantic Retrieval
+        # 1. Semantic Retrieval with user isolation
         retrieved_data = await self.retrieval_service.search(
             query=request.query,
             document_id=request.document_id,
             top_k=request.top_k,
             threshold=threshold,
+            user_id=user_id,
         )
 
         evidence_list = [ChunkEvidence(**item) for item in retrieved_data]

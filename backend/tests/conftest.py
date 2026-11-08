@@ -1,4 +1,10 @@
 import os
+import sys
+import asyncio
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+import uuid
 os.environ["PROVIDER_MODE"] = "mock"
 
 from app.core.config import settings
@@ -47,3 +53,21 @@ async def async_client():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
+
+@pytest.fixture
+async def auth_headers(async_client):
+    """Creates a fresh authenticated user and returns their Authorization headers."""
+    email = f"user_{uuid.uuid4().hex[:8]}@researchpilot.test"
+    password = "StrongPassword123!"
+    resp = await async_client.post(
+        "/api/v1/auth/register",
+        json={"email": email, "password": password}
+    )
+    token = resp.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+@pytest.fixture
+async def auth_client(async_client, auth_headers):
+    """Client with authentication header pre-attached."""
+    async_client.headers.update(auth_headers)
+    yield async_client

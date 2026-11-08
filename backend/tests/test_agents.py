@@ -36,12 +36,12 @@ async def test_web_research_agent():
     assert len(top_item["content"]) > 10
 
 @pytest.mark.asyncio
-async def test_langgraph_multi_agent_workflow(async_client, sample_pdf_bytes):
+async def test_langgraph_multi_agent_workflow(auth_client, sample_pdf_bytes):
     # 1. Upload a document to have in the knowledge base
     files = {
         "file": ("multi_agent_test.pdf", io.BytesIO(sample_pdf_bytes), "application/pdf")
     }
-    upload_res = await async_client.post("/api/v1/documents/upload", files=files)
+    upload_res = await auth_client.post("/api/v1/documents/upload", files=files)
     assert upload_res.status_code == 201
     doc_id = upload_res.json()["id"]
 
@@ -110,10 +110,10 @@ async def test_langgraph_multi_agent_workflow(async_client, sample_pdf_bytes):
             assert len(final_docs_only["normalized_evidence"]) == len(final_docs_only["document_evidence"])
 
     finally:
-        await async_client.delete(f"/api/v1/documents/{doc_id}")
+        await auth_client.delete(f"/api/v1/documents/{doc_id}")
 
 @pytest.mark.asyncio
-async def test_research_job_api_lifecycle(async_client):
+async def test_research_job_api_lifecycle(auth_client):
     # Test Job creation API
     payload = {
         "query": "Impact of Generative AI on Indian Banking Sector",
@@ -122,7 +122,7 @@ async def test_research_job_api_lifecycle(async_client):
         "enable_documents": False,
         "document_ids": []
     }
-    create_resp = await async_client.post("/api/v1/research/jobs", json=payload)
+    create_resp = await auth_client.post("/api/v1/research/jobs", json=payload)
     assert create_resp.status_code == 201
     job = create_resp.json()
     job_id = job["id"]
@@ -130,13 +130,13 @@ async def test_research_job_api_lifecycle(async_client):
     assert job["status"] in ["queued", "processing", "completed"]
 
     # Test List jobs API
-    list_resp = await async_client.get("/api/v1/research/jobs")
+    list_resp = await auth_client.get("/api/v1/research/jobs")
     assert list_resp.status_code == 200
     jobs = list_resp.json()
     assert any(j["id"] == job_id for j in jobs)
 
     # Test Get single job
-    get_resp = await async_client.get(f"/api/v1/research/jobs/{job_id}")
+    get_resp = await auth_client.get(f"/api/v1/research/jobs/{job_id}")
     assert get_resp.status_code == 200
     assert get_resp.json()["id"] == job_id
 

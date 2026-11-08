@@ -1,14 +1,17 @@
 import operator
 from typing import TypedDict, Annotated, List, Dict, Any, Optional
+from typing_extensions import NotRequired
 
 class ResearchState(TypedDict):
     """LangGraph workflow state for ResearchPilot multi-agent orchestration."""
     job_id: str
+    user_id: NotRequired[Optional[str]]
     query: str
     depth: str
     enable_web: bool
     enable_documents: bool
     document_ids: List[str]
+    max_tavily_searches: Optional[int]
 
     # Agent 1 Output
     plan: Optional[Dict[str, Any]]

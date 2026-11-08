@@ -19,7 +19,9 @@ PLANNER_SYSTEM_PROMPT = (
     "   - Statistical significance, ablation studies, and operator impact.\n"
     "   - Practical deployment overheads, runtime scalability, and limitations.\n"
     "4. SOURCE TYPE: Specify the appropriate source type ('web', 'document', or 'both') based on where evidence is most credible.\n"
-    "5. Keep objectives concise, action-oriented, and centered on verifiable evidence."
+    "5. SEARCH QUERY REFORMULATION: For each sub-question, provide an optimized `search_query` containing 3 to 6 targeted "
+    "keywords (omitting conversational fluff, punctuation, and question marks) to maximize retrieval precision in web search and semantic vector databases.\n"
+    "6. Keep objectives concise, action-oriented, and centered on verifiable evidence."
 )
 
 class PlannerAgent:
@@ -63,19 +65,22 @@ class PlannerAgent:
                     id="sq-1",
                     question=f"What are the foundational trends and current adoption state regarding {query}?",
                     focus_area="Technology & Adoption",
-                    source_type="both"
+                    source_type="both",
+                    search_query=f"{query} technological trends enterprise adoption",
                 ),
                 SubQuestion(
                     id="sq-2",
                     question=f"What regulatory guidelines, compliance requirements, and risks govern {query}?",
                     focus_area="Regulation & Risk",
-                    source_type="both"
+                    source_type="both",
+                    search_query=f"{query} regulatory compliance guidelines risk frameworks",
                 ),
                 SubQuestion(
                     id="sq-3",
                     question=f"What are the economic opportunities, challenges, and contradictory findings regarding {query}?",
                     focus_area="Market Impact",
-                    source_type="web"
+                    source_type="web",
+                    search_query=f"{query} market opportunities economic impact challenges",
                 )
             ]
         )

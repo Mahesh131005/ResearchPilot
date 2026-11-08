@@ -1,6 +1,8 @@
 import uuid
+import datetime
+from decimal import Decimal
 from typing import Optional, Dict, Any, List
-from sqlalchemy import String, Text, ForeignKey, JSON, Float
+from sqlalchemy import String, Text, ForeignKey, JSON, Float, Boolean, DateTime, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.db.base import Base, TimestampMixin
@@ -13,6 +15,34 @@ class User(Base, TimestampMixin):
     )
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(50), default="user", nullable=False) # 'user' or 'admin'
+    tier: Mapped[str] = mapped_column(String(50), default="free", nullable=False) # 'free', 'pro', etc.
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    research_jobs: Mapped[List["ResearchJob"]] = relationship(
+        "ResearchJob", back_populates="user"
+    )
+    refresh_tokens: Mapped[List["RefreshToken"]] = relationship(
+        "RefreshToken", back_populates="user", cascade="all, delete-orphan"
+    )
+
+class RefreshToken(Base, TimestampMixin):
+    __tablename__ = "refresh_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    expires_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    replaced_by_token_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
+
+    user: Mapped["User"] = relationship("User", back_populates="refresh_tokens")
 
 class ResearchJob(Base, TimestampMixin):
     __tablename__ = "research_jobs"
@@ -21,14 +51,18 @@ class ResearchJob(Base, TimestampMixin):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True, index=True
     )
+    client_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
     query: Mapped[str] = mapped_column(Text, nullable=False)
     depth: Mapped[str] = mapped_column(String(50), default="standard", nullable=False)
     status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False, index=True)
+    cost_usd: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 6), nullable=True)
+    budget_reserved_usd: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 6), nullable=True)
     plan: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    user: Mapped[Optional["User"]] = relationship("User", back_populates="research_jobs")
     sources: Mapped[List["ResearchSource"]] = relationship(
         "ResearchSource", back_populates="job", cascade="all, delete-orphan"
     )

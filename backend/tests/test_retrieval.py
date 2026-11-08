@@ -20,12 +20,12 @@ async def test_mock_embedding_provider():
     assert len(batch_vectors[1]) == 768
 
 @pytest.mark.asyncio
-async def test_semantic_retrieval_and_qa_pipeline(async_client, sample_pdf_bytes):
+async def test_semantic_retrieval_and_qa_pipeline(auth_client, sample_pdf_bytes):
     # 1. Upload sample document through API
     files = {
         "file": ("indian_banking_ai.pdf", io.BytesIO(sample_pdf_bytes), "application/pdf")
     }
-    upload_res = await async_client.post("/api/v1/documents/upload", files=files)
+    upload_res = await auth_client.post("/api/v1/documents/upload", files=files)
     assert upload_res.status_code == 201
     doc_id = upload_res.json()["id"]
 
@@ -36,7 +36,7 @@ async def test_semantic_retrieval_and_qa_pipeline(async_client, sample_pdf_bytes
             "document_id": doc_id,
             "top_k": 3
         }
-        search_res = await async_client.post("/api/v1/qa/search", json=rbi_query)
+        search_res = await auth_client.post("/api/v1/qa/search", json=rbi_query)
         assert search_res.status_code == 200
         results = search_res.json()
         assert len(results) > 0
@@ -52,7 +52,7 @@ async def test_semantic_retrieval_and_qa_pipeline(async_client, sample_pdf_bytes
             "document_id": doc_id,
             "top_k": 3
         }
-        search_res2 = await async_client.post("/api/v1/qa/search", json=ai_query)
+        search_res2 = await auth_client.post("/api/v1/qa/search", json=ai_query)
         assert search_res2.status_code == 200
         results2 = search_res2.json()
         assert len(results2) > 0
@@ -64,7 +64,7 @@ async def test_semantic_retrieval_and_qa_pipeline(async_client, sample_pdf_bytes
             "query": "What are the regulatory guidelines from the Reserve Bank of India?",
             "document_id": doc_id
         }
-        qa_res = await async_client.post("/api/v1/qa/query", json=qa_query)
+        qa_res = await auth_client.post("/api/v1/qa/query", json=qa_query)
         assert qa_res.status_code == 200
         qa_data = qa_res.json()
         assert qa_data["has_sufficient_evidence"] is True
@@ -79,7 +79,7 @@ async def test_semantic_retrieval_and_qa_pipeline(async_client, sample_pdf_bytes
             "document_id": doc_id,
             "threshold": 0.5 # High threshold that pizza recipe won't meet
         }
-        unrelated_res = await async_client.post("/api/v1/qa/query", json=unrelated_query)
+        unrelated_res = await auth_client.post("/api/v1/qa/query", json=unrelated_query)
         assert unrelated_res.status_code == 200
         unrelated_data = unrelated_res.json()
         assert unrelated_data["has_sufficient_evidence"] is False
@@ -88,5 +88,5 @@ async def test_semantic_retrieval_and_qa_pipeline(async_client, sample_pdf_bytes
 
     finally:
         # Clean up test document
-        await async_client.delete(f"/api/v1/documents/{doc_id}")
+        await auth_client.delete(f"/api/v1/documents/{doc_id}")
 
