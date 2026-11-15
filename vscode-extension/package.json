@@ -5,13 +5,22 @@
   "version": "0.1.0",
   "icon": "media/icon.png",
   "publisher": "ResearchPilot",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mahesh131005/ResearchPilot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Mahesh131005/ResearchPilot/issues"
+  },
+  "homepage": "https://researchpilot-web.onrender.com",
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
     "AI",
     "Machine Learning",
-    "Productivity"
+    "Other"
   ],
   "keywords": [
     "research",
@@ -115,8 +124,8 @@
       "properties": {
         "researchpilot.backendUrl": {
           "type": "string",
-          "default": "http://localhost:8000",
-          "description": "FastAPI backend base URL for ResearchPilot"
+          "default": "https://researchpilot-api-cb0c.onrender.com",
+          "description": "Render backend URL for ResearchPilot API"
         },
         "researchpilot.defaultDepth": {
           "type": "string",
@@ -142,7 +151,8 @@
     }
   },
   "scripts": {
-    "test": "node --test test/**/*.test.js"
+    "test": "node --test test/**/*.test.js",
+    "package": "vsce package"
   },
   "devDependencies": {}
 }

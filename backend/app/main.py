@@ -100,9 +100,12 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception at {request.url.path}: {str(exc)}", exc_info=True)
+    detail = "An unexpected server error occurred. Please try again later."
+    if settings.DEBUG:
+        detail = f"Local Server Error ({type(exc).__name__}): {str(exc)}"
     return JSONResponse(
         status_code=500,
-        content={"detail": "An unexpected server error occurred. Please try again later."},
+        content={"detail": detail},
     )
 
 # Include API v1 router

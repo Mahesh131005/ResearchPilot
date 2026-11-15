@@ -13,7 +13,7 @@ class ResearchPilotApiClient {
    */
   constructor(tokenManager, getBaseUrl) {
     this.tokenManager = tokenManager;
-    this.getBaseUrl = getBaseUrl || (() => "http://localhost:8000");
+    this.getBaseUrl = getBaseUrl || (() => "https://researchpilot-api-cb0c.onrender.com");
   }
 
   /**

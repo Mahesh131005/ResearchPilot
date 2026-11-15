@@ -23,7 +23,7 @@ function activate(context) {
   // 2. Initialize API Client
   const getBackendUrl = () => {
     const config = vscode.workspace.getConfiguration("researchpilot");
-    return config.get("backendUrl") || "http://localhost:8000";
+    return config.get("backendUrl") || "https://researchpilot-api-cb0c.onrender.com";
   };
   const apiClient = new ResearchPilotApiClient(tokenManager, getBackendUrl);
 

@@ -4,4 +4,16 @@ node_modules/**
 test/**
 .DS_Store
 *.log
+.env*
+*.env
+*.sqlite
+*.sqlite3
+*.db
+*.pem
+*.key
+*.cert
+*.tmp
+*.vsix
+coverage/**
+
 
