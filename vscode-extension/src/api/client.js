@@ -45,6 +45,30 @@ class ResearchPilotApiClient {
   }
 
   /**
+   * Helper to decode user profile from JWT access token payload.
+   * @param {string} token
+   * @returns {object|null}
+   */
+  _extractUserFromToken(token) {
+    if (!token || typeof token !== "string") return null;
+    try {
+      const parts = token.split(".");
+      if (parts.length === 3) {
+        const payload = JSON.parse(Buffer.from(parts[1], "base64").toString("utf-8"));
+        return {
+          id: payload.sub,
+          email: payload.email,
+          role: payload.role || "member",
+          tier: payload.tier || "free",
+        };
+      }
+    } catch {
+      // ignore base64 decode failures
+    }
+    return null;
+  }
+
+  /**
    * Authenticates user with credentials and persists tokens in SecretStorage.
    * @param {string} email
    * @param {string} password
@@ -63,8 +87,9 @@ class ResearchPilotApiClient {
         return { success: false, error: formatApiError(res.status, body) };
       }
 
-      await this.tokenManager.storeTokens(body.access_token, body.refresh_token, body.user);
-      return { success: true, user: body.user };
+      const user = body.user || this._extractUserFromToken(body.access_token);
+      await this.tokenManager.storeTokens(body.access_token, body.refresh_token, user);
+      return { success: true, user };
     } catch (e) {
       return { success: false, error: `Login network failure: ${e.message}` };
     }
@@ -90,8 +115,9 @@ class ResearchPilotApiClient {
         return { success: false, error: formatApiError(res.status, body) };
       }
 
-      await this.tokenManager.storeTokens(body.access_token, body.refresh_token, body.user);
-      return { success: true, user: body.user };
+      const user = body.user || this._extractUserFromToken(body.access_token);
+      await this.tokenManager.storeTokens(body.access_token, body.refresh_token, user);
+      return { success: true, user };
     } catch (e) {
       return { success: false, error: `Registration failure: ${e.message}` };
     }
@@ -118,7 +144,8 @@ class ResearchPilotApiClient {
       }
 
       const body = await res.json();
-      await this.tokenManager.storeTokens(body.access_token, body.refresh_token, body.user);
+      const user = body.user || this._extractUserFromToken(body.access_token);
+      await this.tokenManager.storeTokens(body.access_token, body.refresh_token, user);
       return true;
     } catch {
       return false;
