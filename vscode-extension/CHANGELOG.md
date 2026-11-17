@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.1] - 2026-11-17
+
+### Added
+- **Native PDF Document Ingestion for RAG**:
+  - Direct `+ Upload PDF` button in the sidebar Knowledge Base section.
+  - Interactive document list with checkboxes to scope RAG queries to specific papers or documentation.
+  - Added Command Palette command: `ResearchPilot: Upload Document (PDF) for RAG`.
+- **Enhanced Connection Reliability**:
+  - Implemented database connection pre-ping and pool recycling to eliminate stale connection dropouts.
+  - Automatic JWT token decoding to preserve authenticated profile state and email in sidebar.
+
+---
+
 ## [0.1.0] - 2026-11-08
 
 ### Added

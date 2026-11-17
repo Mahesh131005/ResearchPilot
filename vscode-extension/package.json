@@ -2,7 +2,7 @@
   "name": "researchpilot-vscode",
   "displayName": "ResearchPilot",
   "description": "Institutional-Grade Multi-Agent AI Research & Fact-Checking Assistant for VS Code",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "icon": "media/icon.png",
   "publisher": "ResearchPilot",
   "license": "MIT",

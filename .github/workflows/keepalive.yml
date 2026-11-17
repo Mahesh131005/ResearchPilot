@@ -1,0 +1,22 @@
+name: Render Free Tier Keepalive
+
+on:
+  schedule:
+    # Runs every 14 minutes (Render free tier sleeps after 15 minutes of inactivity)
+    - cron: "*/14 * * * *"
+  workflow_dispatch: # Allows manual trigger from the GitHub Actions tab
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render Backend Web Service
+        run: |
+          echo "Pings ResearchPilot Backend..."
+          curl -s -f -m 30 -o /dev/null -w "Backend Status: %{http_code} (time: %{time_total}s)\n" https://researchpilot-api-cb0c.onrender.com/api/v1/health || true
+
+      - name: Ping Render Frontend Static Site
+        run: |
+          echo "Pings ResearchPilot Frontend..."
+          curl -s -f -m 30 -o /dev/null -w "Frontend Status: %{http_code} (time: %{time_total}s)\n" https://researchpilot-web.onrender.com || true
+
