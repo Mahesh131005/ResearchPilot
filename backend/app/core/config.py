@@ -100,6 +100,8 @@ class Settings(BaseSettings):
     # External Provider Keys
     GEMINI_API_KEY: str = ""
     TAVILY_API_KEY: str = ""
+    COHERE_API_KEY: str = ""
+    COHERE_MODEL: str = "command-r-08-2024"
 
     # Provider Mode: "auto", "mock", or "live"
     # - "auto": Uses live Gemini/Tavily if keys are configured; otherwise falls back cleanly to mock.
@@ -183,6 +185,10 @@ class Settings(BaseSettings):
         return bool(self.GEMINI_API_KEY and self.GEMINI_API_KEY.strip())
 
     @property
+    def has_cohere_key(self) -> bool:
+        return bool(self.COHERE_API_KEY and self.COHERE_API_KEY.strip())
+
+    @property
     def has_tavily_key(self) -> bool:
         return bool(self.TAVILY_API_KEY and self.TAVILY_API_KEY.strip())
 
@@ -193,7 +199,7 @@ class Settings(BaseSettings):
             return "mock"
         elif mode == "live":
             return "live"
-        return "live" if self.has_gemini_key else "mock"
+        return "live" if (self.has_gemini_key or self.has_cohere_key) else "mock"
 
     @property
     def effective_embedding_mode(self) -> str:

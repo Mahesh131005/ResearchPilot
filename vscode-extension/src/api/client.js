@@ -185,7 +185,17 @@ class ResearchPilotApiClient {
    * Submits a new research job.
    * Returns { success, job, error }
    */
-  async createJob({ query, depth = "standard", enableWeb = true, enableDocuments = true, documentIds = [] }) {
+  async createJob({
+    query,
+    depth = "standard",
+    enableWeb = true,
+    enableDocuments = true,
+    documentIds = [],
+    customGeminiKey = null,
+    customCohereKey = null,
+    customTavilyKey = null,
+    preferredLlm = null,
+  }) {
     try {
       const payload = {
         query,
@@ -193,6 +203,10 @@ class ResearchPilotApiClient {
         enable_web: enableWeb,
         enable_documents: enableDocuments,
         document_ids: documentIds,
+        custom_gemini_key: customGeminiKey || undefined,
+        custom_cohere_key: customCohereKey || undefined,
+        custom_tavily_key: customTavilyKey || undefined,
+        preferred_llm: preferredLlm || undefined,
       };
 
       const res = await this.authenticatedFetch("api/v1/research/jobs", {

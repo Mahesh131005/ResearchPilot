@@ -6,8 +6,8 @@ from app.schemas.research import SubQuestion
 class WebResearchAgent:
     """Specialized agent conducting web search, source verification, and deduplication via Tavily."""
 
-    def __init__(self, search_service: Optional[TavilySearchService] = None):
-        self.search_service = search_service or TavilySearchService()
+    def __init__(self, search_service: Optional[TavilySearchService] = None, api_key: Optional[str] = None):
+        self.search_service = search_service or TavilySearchService(api_key=api_key)
 
     async def research(
         self,

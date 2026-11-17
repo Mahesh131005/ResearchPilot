@@ -1,8 +1,8 @@
 {
   "name": "researchpilot-vscode",
-  "displayName": "ResearchPilot",
+  "displayName": "AI Research Assistant",
   "description": "Institutional-Grade Multi-Agent AI Research & Fact-Checking Assistant for VS Code",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "icon": "media/icon.png",
   "publisher": "ResearchPilot",
   "license": "MIT",
@@ -152,6 +152,31 @@
           "type": "boolean",
           "default": true,
           "description": "Enable internal document RAG retrieval (pgvector)"
+        },
+        "researchpilot.geminiApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Optional: Personal Google Gemini API Key (BYOK). Leave blank to use server keys."
+        },
+        "researchpilot.cohereApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Optional: Personal Cohere API Key (BYOK). Leave blank to use server keys."
+        },
+        "researchpilot.tavilyApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Optional: Personal Tavily API Key (BYOK). Leave blank to use server keys."
+        },
+        "researchpilot.preferredLlm": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "gemini",
+            "cohere"
+          ],
+          "default": "auto",
+          "description": "Preferred LLM provider (auto uses multi-provider pool with automatic fallback)"
         }
       }
     }

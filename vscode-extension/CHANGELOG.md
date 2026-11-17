@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.2] - 2026-11-17
+
+### Added
+- **Multi-API Integration with Cohere Command-R**:
+  - Full Cohere v2 Chat and native structured JSON output integration alongside Google Gemini 2.5 Flash.
+  - Automatic multi-provider failover: if Gemini hits quota or rate limits, research automatically continues with Cohere!
+- **Bring Your Own Key (BYOK) Feature**:
+  - Optional custom API keys for Google Gemini, Cohere, and Tavily Search.
+  - Configurable via VS Code Settings or directly in the sidebar drawer.
+  - Users without custom keys automatically use the shared server keys.
+- **Branding Update**:
+  - Extension display name updated to **AI Research Assistant**.
+
+---
+
 ## [0.1.1] - 2026-11-17
 
 ### Added

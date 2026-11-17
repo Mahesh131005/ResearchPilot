@@ -93,6 +93,10 @@ class ResearchJobManager:
                 enable_web=req.enable_web,
                 enable_documents=req.enable_documents,
                 document_ids=doc_ids,
+                custom_gemini_key=req.custom_gemini_key,
+                custom_cohere_key=req.custom_cohere_key,
+                custom_tavily_key=req.custom_tavily_key,
+                preferred_llm=req.preferred_llm,
             )
         )
 
@@ -106,6 +110,10 @@ class ResearchJobManager:
         enable_web: bool,
         enable_documents: bool,
         document_ids: List[str],
+        custom_gemini_key: Optional[str] = None,
+        custom_cohere_key: Optional[str] = None,
+        custom_tavily_key: Optional[str] = None,
+        preferred_llm: Optional[str] = None,
     ):
         """Asynchronously executes the 5-agent LangGraph workflow."""
         async with AsyncSessionLocal() as session:
@@ -126,7 +134,13 @@ class ResearchJobManager:
                         limits = await UsageService.get_user_limits(session, user)
                         max_tavily = limits.tavily_searches_per_job_limit
 
-                graph = create_research_graph(session)
+                graph = create_research_graph(
+                    session,
+                    custom_gemini_key=custom_gemini_key,
+                    custom_cohere_key=custom_cohere_key,
+                    custom_tavily_key=custom_tavily_key,
+                    preferred_llm=preferred_llm,
+                )
 
                 initial_state: ResearchState = {
                     "job_id": str(job_id),
@@ -240,6 +254,23 @@ class ResearchJobManager:
                 clear_usage_context(tok)
 
     async def list_jobs(self, user_id: Optional[uuid.UUID] = None) -> List[ResearchJob]:
+        # Auto-reap stale jobs older than 8 minutes left in queued/processing
+        now = datetime.datetime.now(datetime.timezone.utc)
+        stale_threshold = now - datetime.timedelta(minutes=8)
+        stale_stmt = select(ResearchJob).where(
+            ResearchJob.status.in_(["queued", "processing"]),
+            ResearchJob.created_at < stale_threshold,
+        )
+        if user_id:
+            stale_stmt = stale_stmt.where(ResearchJob.user_id == user_id)
+        stale_res = await self.db.execute(stale_stmt)
+        stale_jobs = stale_res.scalars().all()
+        if stale_jobs:
+            for sj in stale_jobs:
+                sj.status = "failed"
+                sj.error_message = "Research job timed out or server restarted."
+            await self.db.commit()
+
         stmt = select(ResearchJob)
         if user_id:
             stmt = stmt.where(ResearchJob.user_id == user_id)

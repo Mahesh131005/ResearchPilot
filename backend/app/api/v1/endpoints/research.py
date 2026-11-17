@@ -27,14 +27,27 @@ async def create_research_job(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
     x_idempotency_key: Optional[str] = Header(None, alias="X-Idempotency-Key"),
+    x_custom_gemini: Optional[str] = Header(None, alias="X-Custom-Gemini-Key"),
+    x_custom_cohere: Optional[str] = Header(None, alias="X-Custom-Cohere-Key"),
+    x_custom_tavily: Optional[str] = Header(None, alias="X-Custom-Tavily-Key"),
+    x_preferred_llm: Optional[str] = Header(None, alias="X-Preferred-LLM"),
 ):
     """
     Submits a new multi-agent research inquiry bound to the current user.
     Enforces atomic rate limiting, quotas, and concurrency restrictions.
-    Supports idempotency via X-Idempotency-Key header or client_token.
+    Supports idempotency and Bring Your Own Key (BYOK) for Gemini, Cohere, and Tavily.
     """
     if x_idempotency_key and not request.client_token:
         request.client_token = x_idempotency_key
+    if x_custom_gemini and not request.custom_gemini_key:
+        request.custom_gemini_key = x_custom_gemini
+    if x_custom_cohere and not request.custom_cohere_key:
+        request.custom_cohere_key = x_custom_cohere
+    if x_custom_tavily and not request.custom_tavily_key:
+        request.custom_tavily_key = x_custom_tavily
+    if x_preferred_llm and not request.preferred_llm:
+        request.preferred_llm = x_preferred_llm
+
     manager = ResearchJobManager(db)
     job = await manager.create_job(request, user_id=current_user.id)
     return job

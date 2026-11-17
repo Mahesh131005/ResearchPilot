@@ -38,6 +38,10 @@ class ResearchJobCreate(BaseModel):
     enable_documents: bool = Field(True, description="Enable RAG retrieval over uploaded PDFs")
     document_ids: List[uuid.UUID] = Field(default_factory=list, description="Selected documents to include")
     client_token: Optional[str] = Field(None, description="Idempotency token to prevent double-counting upon retries")
+    custom_gemini_key: Optional[str] = Field(None, description="User's personal Gemini API Key (BYOK)")
+    custom_cohere_key: Optional[str] = Field(None, description="User's personal Cohere API Key (BYOK)")
+    custom_tavily_key: Optional[str] = Field(None, description="User's personal Tavily API Key (BYOK)")
+    preferred_llm: Optional[str] = Field(None, description="Preferred LLM provider: 'gemini', 'cohere', or 'auto'")
 
 class ResearchEventResponse(BaseModel):
     id: uuid.UUID

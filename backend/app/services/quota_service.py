@@ -42,7 +42,21 @@ class QuotaService:
         limits = await UsageService.get_user_limits(db, user)
         now = datetime.datetime.now(datetime.timezone.utc)
 
-        # 4. Check Concurrency Limit
+        # 4. Check Concurrency Limit (Auto-expire any stale jobs older than 8 minutes)
+        stale_threshold = now - datetime.timedelta(minutes=8)
+        stale_jobs_stmt = select(ResearchJob).where(
+            ResearchJob.user_id == user.id,
+            ResearchJob.status.in_(["queued", "processing"]),
+            ResearchJob.created_at < stale_threshold,
+        )
+        stale_res = await db.execute(stale_jobs_stmt)
+        stale_jobs = stale_res.scalars().all()
+        if stale_jobs:
+            for s_job in stale_jobs:
+                s_job.status = "failed"
+                s_job.error_message = "Research job timed out or backend container was restarted."
+            await db.commit()
+
         concurrent_q = select(func.count()).select_from(ResearchJob).where(
             ResearchJob.user_id == user.id,
             ResearchJob.status.in_(["queued", "processing"]),

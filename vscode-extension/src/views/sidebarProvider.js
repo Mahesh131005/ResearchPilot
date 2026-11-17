@@ -53,6 +53,11 @@ class SidebarProvider {
           await this.handleUploadDocument();
           break;
         case "viewReport":
+          if (data.status === "processing" || data.status === "queued") {
+            vscode.window.showInformationMessage(
+              `Research for "${(data.query || '').slice(0, 35)}..." is still in progress. The report will open automatically once completed.`
+            );
+          }
           await this.reportPanel.show(data.jobId, data.query);
           break;
         case "refresh":
@@ -177,11 +182,17 @@ class SidebarProvider {
   }
 
   async handleStartResearch(payload) {
-    const { query, depth, enableWeb, enableDocuments, documentIds } = payload;
+    const { query, depth, enableWeb, enableDocuments, documentIds, customGeminiKey, customCohereKey, customTavilyKey, preferredLlm } = payload;
     if (!query || query.trim().length < 5) {
       vscode.window.showWarningMessage("Research query must be at least 5 characters long.");
       return;
     }
+
+    const cfg = vscode.workspace.getConfiguration("researchpilot");
+    const gKey = customGeminiKey || cfg.get("geminiApiKey") || "";
+    const cKey = customCohereKey || cfg.get("cohereApiKey") || "";
+    const tKey = customTavilyKey || cfg.get("tavilyApiKey") || "";
+    const pLlm = preferredLlm || cfg.get("preferredLlm") || "auto";
 
     this.view?.webview.postMessage({ type: "researchStarted", query });
 
@@ -191,6 +202,10 @@ class SidebarProvider {
       enableWeb: enableWeb !== false,
       enableDocuments: enableDocuments !== false,
       documentIds: documentIds || [],
+      customGeminiKey: gKey || undefined,
+      customCohereKey: cKey || undefined,
+      customTavilyKey: tKey || undefined,
+      preferredLlm: pLlm !== "auto" ? pLlm : undefined,
     });
 
     if (!submission.success) {
@@ -340,7 +355,7 @@ class SidebarProvider {
         <!-- Auth Section -->
         <div id="auth-card" class="card">
           <div class="title">
-            <span id="auth-title">Log In to ResearchPilot</span>
+            <span id="auth-title">AI Research Assistant</span>
           </div>
           <div id="login-fields">
             <input type="email" id="email" placeholder="Email address" />
@@ -393,6 +408,25 @@ class SidebarProvider {
             </div>
           </div>
 
+          <!-- Optional BYOK Custom API Keys -->
+          <div style="margin-bottom: 10px;">
+            <div style="cursor: pointer; font-size: 11px; opacity: 0.8; display: flex; align-items: center; justify-content: space-between; padding: 4px 0;" onclick="toggleByokSection()">
+              <span>⚙️ API Keys (BYOK - Optional)</span>
+              <span id="byok-arrow">▶</span>
+            </div>
+            <div id="byok-section" class="hidden" style="margin-top: 4px; padding: 8px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--vscode-widget-border); border-radius: 4px; font-size: 10px;">
+              <div style="opacity: 0.7; margin-bottom: 6px;">Leave blank to use shared server keys, or enter personal keys for unlimited quota:</div>
+              <input type="password" id="byok-gemini" placeholder="Personal Gemini API Key" style="font-size: 10px; margin-bottom: 4px;" />
+              <input type="password" id="byok-cohere" placeholder="Personal Cohere API Key" style="font-size: 10px; margin-bottom: 4px;" />
+              <input type="password" id="byok-tavily" placeholder="Personal Tavily API Key" style="font-size: 10px; margin-bottom: 6px;" />
+              <select id="byok-provider" style="font-size: 10px; margin-bottom: 0;">
+                <option value="auto">Multi-API: Auto-Fallback (Gemini + Cohere)</option>
+                <option value="gemini">Force Gemini 2.5 Flash</option>
+                <option value="cohere">Force Cohere Command-R</option>
+              </select>
+            </div>
+          </div>
+
           <button id="btn-submit" onclick="submitResearch()">Run Multi-Agent Research</button>
 
           <!-- Live Progress Stream -->
@@ -419,7 +453,7 @@ class SidebarProvider {
 
           function toggleAuthMode() {
             isRegisterMode = !isRegisterMode;
-            document.getElementById('auth-title').innerText = isRegisterMode ? 'Register New Account' : 'Log In to ResearchPilot';
+            document.getElementById('auth-title').innerText = isRegisterMode ? 'Register New Account' : 'AI Research Assistant';
             document.getElementById('btn-auth').innerText = isRegisterMode ? 'Register' : 'Log In';
             document.getElementById('btn-toggle-auth').innerText = isRegisterMode ? 'Have an account? Log In' : 'Create an Account';
             document.getElementById('register-name-field').classList.toggle('hidden', !isRegisterMode);
@@ -440,6 +474,12 @@ class SidebarProvider {
             vscode.postMessage({ command: 'logout' });
           }
 
+          function toggleByokSection() {
+            const sec = document.getElementById('byok-section');
+            const isHidden = sec.classList.toggle('hidden');
+            document.getElementById('byok-arrow').innerText = isHidden ? '▶' : '▼';
+          }
+
           function toggleDocsSection() {
             const checked = document.getElementById('check-docs').checked;
             document.getElementById('docs-section').style.display = checked ? 'block' : 'none';
@@ -458,6 +498,11 @@ class SidebarProvider {
             const docCheckboxes = document.querySelectorAll('.doc-checkbox:checked');
             const documentIds = Array.from(docCheckboxes).map(cb => cb.value);
 
+            const customGeminiKey = document.getElementById('byok-gemini')?.value.trim() || undefined;
+            const customCohereKey = document.getElementById('byok-cohere')?.value.trim() || undefined;
+            const customTavilyKey = document.getElementById('byok-tavily')?.value.trim() || undefined;
+            const preferredLlm = document.getElementById('byok-provider')?.value || undefined;
+
             vscode.postMessage({
               command: 'startResearch',
               query,
@@ -465,11 +510,15 @@ class SidebarProvider {
               enableWeb,
               enableDocuments,
               documentIds,
+              customGeminiKey,
+              customCohereKey,
+              customTavilyKey,
+              preferredLlm,
             });
           }
 
-          function viewReport(jobId, query) {
-            vscode.postMessage({ command: 'viewReport', jobId, query });
+          function viewReport(jobId, query, status) {
+            vscode.postMessage({ command: 'viewReport', jobId, query, status });
           }
 
           window.addEventListener('message', event => {
@@ -558,7 +607,7 @@ class SidebarProvider {
               const html = data.history.map(job => {
                 const statusClass = 'badge badge-' + (job.status || 'queued');
                 const title = (job.query || 'Research Inquiry').slice(0, 50);
-                return '<div class="history-item" onclick="viewReport(\\'' + job.id + '\\', \\'' + encodeURIComponent(job.query || '') + '\\')">' +
+                return '<div class="history-item" onclick="viewReport(\\'' + job.id + '\\', \\'' + encodeURIComponent(job.query || '') + '\\', \\'' + (job.status || '') + '\\')">' +
                   '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">' +
                     '<span class="' + statusClass + '">' + job.status + '</span>' +
                     '<span style="font-size:9px; opacity:0.6;">' + (job.depth || 'standard') + '</span>' +

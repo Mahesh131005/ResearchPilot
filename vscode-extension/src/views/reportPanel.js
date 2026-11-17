@@ -71,8 +71,37 @@ class ReportPanel {
       this.currentPanel.title = report.title || "Research Report";
       this.currentPanel.webview.html = this._getReportHtml(report, query);
     } catch (err) {
-      this.currentPanel.webview.html = this._getErrorHtml(err.message);
+      const errMsg = err.message || "";
+      if (errMsg.toLowerCase().includes("processing") || errMsg.toLowerCase().includes("not yet") || errMsg.toLowerCase().includes("not been generated")) {
+        this.currentPanel.webview.html = this._getProcessingHtml(query);
+      } else {
+        this.currentPanel.webview.html = this._getErrorHtml(errMsg);
+      }
     }
+  }
+
+  _getProcessingHtml(query) {
+    return `<!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';">
+        <style>
+          body { font-family: var(--vscode-font-family); padding: 32px; color: var(--vscode-foreground); display: flex; align-items: center; justify-content: center; height: 80vh; text-align: center; }
+          .card { background: var(--vscode-editor-background); border: 1px solid var(--vscode-widget-border); padding: 28px; border-radius: 8px; max-width: 500px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+          .spinner { border: 3px solid rgba(255, 255, 255, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: var(--vscode-button-background); animation: spin 1s linear infinite; margin: 0 auto 16px; }
+          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="spinner"></div>
+          <h3 style="margin-top: 0;">Multi-Agent Research in Progress</h3>
+          <p style="opacity: 0.85; font-size: 13px; line-height: 1.5;">LangGraph agents are actively formulating search plans, synthesizing findings, and fact-checking claims for:<br><strong style="color: var(--vscode-textLink-foreground);">${this._escapeHtml(query || '')}</strong></p>
+          <p style="opacity: 0.6; font-size: 11px; margin-top: 16px;">This report will automatically appear once synthesis and verification complete. Please keep this tab open or check back in ~30–60 seconds.</p>
+        </div>
+      </body>
+    </html>`;
   }
 
   async saveMarkdown() {

@@ -10,17 +10,32 @@ from app.agents.web_research import WebResearchAgent
 from app.agents.document_research import DocumentResearchAgent
 from app.agents.fact_checker import FactCheckerAgent
 from app.agents.report_writer import ReportWriterAgent
+from app.providers.base import LLMProvider
+from app.providers.factory import get_llm_provider
 
-def create_research_graph(db: AsyncSession):
+def create_research_graph(
+    db: AsyncSession,
+    llm_provider: Optional[LLMProvider] = None,
+    custom_gemini_key: Optional[str] = None,
+    custom_cohere_key: Optional[str] = None,
+    custom_tavily_key: Optional[str] = None,
+    preferred_llm: Optional[str] = None,
+):
     """
     Constructs the complete 5-Agent LangGraph multi-agent orchestration workflow:
     Planner -> [Web Research || Document Research] -> Evidence Normalizer -> Fact Checker -> Report Writer -> END.
+    Supports Bring Your Own Key (BYOK) and resilient fallback between Gemini and Cohere.
     """
-    planner_agent = PlannerAgent()
-    web_agent = WebResearchAgent()
+    llm = llm_provider or get_llm_provider(
+        provider_name=preferred_llm,
+        custom_api_key=custom_gemini_key,
+        custom_cohere_key=custom_cohere_key,
+    )
+    planner_agent = PlannerAgent(llm_provider=llm)
+    web_agent = WebResearchAgent(api_key=custom_tavily_key)
     doc_agent = DocumentResearchAgent(db)
-    fact_checker_agent = FactCheckerAgent()
-    report_writer_agent = ReportWriterAgent()
+    fact_checker_agent = FactCheckerAgent(llm_provider=llm)
+    report_writer_agent = ReportWriterAgent(llm_provider=llm)
 
     # 1. Planner Node
     async def planner_node(state: ResearchState) -> Dict[str, Any]:

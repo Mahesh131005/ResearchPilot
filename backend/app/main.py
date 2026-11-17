@@ -21,6 +21,28 @@ async def lifespan(app: FastAPI):
     app.state.start_time = time.time()
     logger.info("Initializing ResearchPilot backend (Production Readiness Active)...")
     logger.info("Database target (credentials omitted): async=%s, sync=%s", settings.safe_db_summary, settings.safe_sync_db_summary)
+
+    # Clean up any orphaned jobs left in queued/processing from a previous crash/restart
+    try:
+        from app.db.session import AsyncSessionLocal
+        from app.models.research import ResearchJob
+        from sqlalchemy import update
+        async with AsyncSessionLocal() as session:
+            stmt = (
+                update(ResearchJob)
+                .where(ResearchJob.status.in_(["queued", "processing"]))
+                .values(
+                    status="failed",
+                    error_message="Job was interrupted due to a backend container restart or cold start."
+                )
+            )
+            result = await session.execute(stmt)
+            await session.commit()
+            if result.rowcount > 0:
+                logger.info("Cleaned up %d orphaned in-flight research jobs on startup.", result.rowcount)
+    except Exception as e:
+        logger.warning("Could not clean up orphaned jobs on startup: %s", e)
+
     yield
     logger.info("Graceful shutdown initiated. Releasing resources...")
 
