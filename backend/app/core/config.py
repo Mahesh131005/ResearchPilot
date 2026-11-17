@@ -136,9 +136,9 @@ class Settings(BaseSettings):
     GRACEFUL_SHUTDOWN_TIMEOUT_SECONDS: int = 15
 
     # Rate Limiting & User Quotas (Configurable per-tier defaults)
-    RATE_LIMIT_FREE_HOURLY: int = 5
-    RATE_LIMIT_FREE_DAILY: int = 5
-    RATE_LIMIT_FREE_MONTHLY: int = 100
+    RATE_LIMIT_FREE_HOURLY: int = 10
+    RATE_LIMIT_FREE_DAILY: int = 10
+    RATE_LIMIT_FREE_MONTHLY: int = 200
     RATE_LIMIT_FREE_CONCURRENT: int = 1
     RATE_LIMIT_FREE_TAVILY_PER_JOB: int = 5
 

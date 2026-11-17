@@ -22,6 +22,16 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing ResearchPilot backend (Production Readiness Active)...")
     logger.info("Database target (credentials omitted): async=%s, sync=%s", settings.safe_db_summary, settings.safe_sync_db_summary)
 
+    # Ensure is_byok column exists in PostgreSQL (idempotent and safe)
+    try:
+        from app.db.session import AsyncSessionLocal
+        from sqlalchemy import text
+        async with AsyncSessionLocal() as session:
+            await session.execute(text("ALTER TABLE research_jobs ADD COLUMN IF NOT EXISTS is_byok BOOLEAN DEFAULT FALSE;"))
+            await session.commit()
+    except Exception as e:
+        logger.warning("Could not verify is_byok column on startup: %s", e)
+
     # Clean up any orphaned jobs left in queued/processing from a previous crash/restart
     try:
         from app.db.session import AsyncSessionLocal

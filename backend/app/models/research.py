@@ -59,6 +59,7 @@ class ResearchJob(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False, index=True)
     cost_usd: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 6), nullable=True)
     budget_reserved_usd: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 6), nullable=True)
+    is_byok: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
     plan: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 

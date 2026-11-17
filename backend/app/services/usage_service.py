@@ -173,27 +173,30 @@ class UsageService:
         else:
             next_month = now.replace(month=now.month + 1, day=1, hour=0, minute=0, second=0, microsecond=0)
 
-        # 1. Hourly jobs
+        # 1. Hourly jobs (platform keys only)
         hourly_q = select(func.count()).select_from(ResearchJob).where(
             ResearchJob.user_id == user.id,
             ResearchJob.created_at >= one_hour_ago,
+            ResearchJob.is_byok == False,
         )
         hourly_used = (await db.execute(hourly_q)).scalar() or 0
 
-        # 2. Daily jobs
+        # 2. Daily jobs (platform keys only, BYOK jobs are free & unlimited)
         daily_q = select(func.count()).select_from(ResearchJob).where(
             ResearchJob.user_id == user.id,
             ResearchJob.created_at >= start_of_day,
             ResearchJob.status != "failed",
+            ResearchJob.is_byok == False,
         )
         daily_used = (await db.execute(daily_q)).scalar() or 0
         daily_remaining = max(0, limits.daily_jobs_limit - daily_used)
 
-        # 3. Monthly jobs
+        # 3. Monthly jobs (platform keys only)
         monthly_q = select(func.count()).select_from(ResearchJob).where(
             ResearchJob.user_id == user.id,
             ResearchJob.created_at >= start_of_month,
             ResearchJob.status != "failed",
+            ResearchJob.is_byok == False,
         )
         monthly_used = (await db.execute(monthly_q)).scalar() or 0
         monthly_remaining = max(0, limits.monthly_jobs_limit - monthly_used)

@@ -41,20 +41,27 @@ class ResearchJobManager:
                 ),
             )
 
+        is_byok = bool(
+            (req.custom_gemini_key and req.custom_gemini_key.strip()) or
+            (req.custom_cohere_key and req.custom_cohere_key.strip()) or
+            (req.custom_tavily_key and req.custom_tavily_key.strip())
+        )
+
         reserved_budget = None
         if user_id:
             user = await self.db.get(User, user_id)
             if user:
                 is_retry, existing_job = await QuotaService.check_and_reserve_job(
-                    self.db, user, client_token=req.client_token
+                    self.db, user, client_token=req.client_token, is_byok=is_byok
                 )
                 if is_retry and existing_job:
                     return existing_job
 
-                # Atomically reserve monetary budget for the research job
-                reserved_budget = await BillingService.reserve_job_budget(
-                    self.db, user, client_token=req.client_token
-                )
+                # Atomically reserve monetary budget for the research job ONLY if using platform keys
+                if not is_byok:
+                    reserved_budget = await BillingService.reserve_job_budget(
+                        self.db, user, client_token=req.client_token
+                    )
 
         if req.document_ids and user_id:
             # Verify ownership of requested documents; return 404 to avoid enumeration
@@ -79,6 +86,7 @@ class ResearchJobManager:
             depth=req.depth,
             status="queued",
             budget_reserved_usd=reserved_budget,
+            is_byok=is_byok,
         )
         self.db.add(job)
         await self.db.commit()
@@ -243,7 +251,7 @@ class ResearchJobManager:
                     session.add(err_event)
                     await session.commit()
             finally:
-                if job and job.user_id:
+                if job and job.user_id and not getattr(job, "is_byok", False):
                     try:
                         await BillingService.reconcile_job_cost(
                             session, job_id=job.id, user_id=job.user_id

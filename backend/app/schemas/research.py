@@ -63,6 +63,7 @@ class ResearchJobResponse(BaseModel):
     status: str
     cost_usd: Optional[float] = None
     budget_reserved_usd: Optional[float] = None
+    is_byok: bool = False
     plan: Optional[Dict[str, Any]] = None
     error_message: Optional[str] = None
     created_at: datetime

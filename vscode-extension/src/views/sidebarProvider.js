@@ -372,8 +372,9 @@ class SidebarProvider {
             </div>
             <!-- Quick Quota Preview -->
             <div id="quota-preview" style="font-size: 10px; margin-bottom: 8px; opacity: 0.9;">
-              <div>Daily Jobs: <span id="quota-daily-text">0/10</span></div>
+              <div>Daily Jobs: <span id="quota-daily-text">0 / 10</span></div>
               <div class="meter"><div id="quota-daily-bar" class="meter-bar"></div></div>
+              <div id="byok-active-notice" class="hidden" style="color: #4ec9b0; font-size: 10px; margin-top: 4px; font-weight: 500;">✨ BYOK Active: Personal keys (Unlimited Quota)</div>
             </div>
             <button class="btn-secondary" style="font-size: 11px; padding: 4px;" onclick="logout()">Log Out</button>
           </div>
@@ -416,9 +417,9 @@ class SidebarProvider {
             </div>
             <div id="byok-section" class="hidden" style="margin-top: 4px; padding: 8px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--vscode-widget-border); border-radius: 4px; font-size: 10px;">
               <div style="opacity: 0.7; margin-bottom: 6px;">Leave blank to use shared server keys, or enter personal keys for unlimited quota:</div>
-              <input type="password" id="byok-gemini" placeholder="Personal Gemini API Key" style="font-size: 10px; margin-bottom: 4px;" />
-              <input type="password" id="byok-cohere" placeholder="Personal Cohere API Key" style="font-size: 10px; margin-bottom: 4px;" />
-              <input type="password" id="byok-tavily" placeholder="Personal Tavily API Key" style="font-size: 10px; margin-bottom: 6px;" />
+              <input type="password" id="byok-gemini" placeholder="Personal Gemini API Key" oninput="checkByokNotice()" style="font-size: 10px; margin-bottom: 4px;" />
+              <input type="password" id="byok-cohere" placeholder="Personal Cohere API Key" oninput="checkByokNotice()" style="font-size: 10px; margin-bottom: 4px;" />
+              <input type="password" id="byok-tavily" placeholder="Personal Tavily API Key" oninput="checkByokNotice()" style="font-size: 10px; margin-bottom: 6px;" />
               <select id="byok-provider" style="font-size: 10px; margin-bottom: 0;">
                 <option value="auto">Multi-API: Auto-Fallback (Gemini + Cohere)</option>
                 <option value="gemini">Force Gemini 2.5 Flash</option>
@@ -478,6 +479,21 @@ class SidebarProvider {
             const sec = document.getElementById('byok-section');
             const isHidden = sec.classList.toggle('hidden');
             document.getElementById('byok-arrow').innerText = isHidden ? '▶' : '▼';
+            checkByokNotice();
+          }
+
+          function checkByokNotice() {
+            const g = (document.getElementById('byok-gemini')?.value || '').trim();
+            const c = (document.getElementById('byok-cohere')?.value || '').trim();
+            const t = (document.getElementById('byok-tavily')?.value || '').trim();
+            const notice = document.getElementById('byok-active-notice');
+            if (notice) {
+              if (g || c || t) {
+                notice.classList.remove('hidden');
+              } else {
+                notice.classList.add('hidden');
+              }
+            }
           }
 
           function toggleDocsSection() {
@@ -579,6 +595,7 @@ class SidebarProvider {
               const pct = Math.min(100, Math.round((dailyUsed / dailyLimit) * 100));
               document.getElementById('quota-daily-bar').style.width = pct + '%';
             }
+            checkByokNotice();
 
             // Documents list
             const docsList = document.getElementById('docs-list');

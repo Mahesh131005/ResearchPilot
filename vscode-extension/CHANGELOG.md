@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.3] - 2026-11-17
+
+### Added
+- **10 Daily Platform Jobs**: Free tier daily allowance expanded from 5 to 10 jobs per day.
+- **BYOK Quota Exemption**: Research inquiries executed using personal API keys (Gemini, Cohere, Tavily) do not deduct or consume the 10/day platform quota (unlimited personal research).
+- **Active BYOK Status Indicator**: Visual tag in the sidebar displaying when custom keys are active.
+
+---
+
 ## [0.1.2] - 2026-11-17
 
 ### Added
