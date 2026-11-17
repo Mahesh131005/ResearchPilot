@@ -127,7 +127,17 @@ function registerResearchCommands(context, apiClient, sidebarProvider, reportPan
     }
   );
 
-  context.subscriptions.push(researchSelectionCmd, startResearchCmd, saveReportCmd);
+  // 4. Upload Document (PDF) for RAG
+  const uploadDocCmd = vscode.commands.registerCommand(
+    "researchpilot.uploadDocument",
+    async () => {
+      if (sidebarProvider) {
+        await sidebarProvider.handleUploadDocument();
+      }
+    }
+  );
+
+  context.subscriptions.push(researchSelectionCmd, startResearchCmd, saveReportCmd, uploadDocCmd);
 }
 
 module.exports = { registerResearchCommands };

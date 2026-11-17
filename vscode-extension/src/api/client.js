@@ -272,6 +272,52 @@ class ResearchPilotApiClient {
   }
 
   /**
+   * Uploads a PDF document to the knowledge base for RAG.
+   * @param {Buffer|Uint8Array} fileBuffer
+   * @param {string} fileName
+   * @returns {Promise<{ success: boolean, document?: object, error?: string }>}
+   */
+  async uploadDocument(fileBuffer, fileName) {
+    try {
+      const formData = new FormData();
+      const blob = new Blob([fileBuffer], { type: "application/pdf" });
+      formData.append("file", blob, fileName);
+
+      let token = await this.tokenManager.getAccessToken();
+      const headers = {
+        "Authorization": `Bearer ${token || ""}`,
+      };
+
+      let response = await fetch(this.url("api/v1/documents/upload"), {
+        method: "POST",
+        headers,
+        body: formData,
+      });
+
+      if (response.status === 401) {
+        const refreshed = await this.refreshAccessToken();
+        if (refreshed) {
+          token = await this.tokenManager.getAccessToken();
+          headers["Authorization"] = `Bearer ${token}`;
+          response = await fetch(this.url("api/v1/documents/upload"), {
+            method: "POST",
+            headers,
+            body: formData,
+          });
+        }
+      }
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        return { success: false, error: formatApiError(response.status, body) };
+      }
+      return { success: true, document: body };
+    } catch (e) {
+      return { success: false, error: `Document upload failed: ${e.message}` };
+    }
+  }
+
+  /**
    * Fetches user credit wallet balance and reservation status.
    */
   async getWallet() {

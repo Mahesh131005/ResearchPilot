@@ -39,7 +39,8 @@
     "onCommand:researchpilot.logout",
     "onCommand:researchpilot.viewUsage",
     "onCommand:researchpilot.refreshHistory",
-    "onCommand:researchpilot.saveReportMarkdown"
+    "onCommand:researchpilot.saveReportMarkdown",
+    "onCommand:researchpilot.uploadDocument"
   ],
   "contributes": {
     "viewsContainers": {
@@ -95,6 +96,11 @@
       {
         "command": "researchpilot.refreshHistory",
         "title": "ResearchPilot: Refresh Research History",
+        "category": "ResearchPilot"
+      },
+      {
+        "command": "researchpilot.uploadDocument",
+        "title": "ResearchPilot: Upload Document (PDF) for RAG",
         "category": "ResearchPilot"
       }
     ],

@@ -142,5 +142,35 @@ describe("ResearchPilotApiClient Tests", () => {
       global.fetch = originalFetch;
     }
   });
+
+  it("should successfully upload a research document for RAG", async () => {
+    const originalFetch = global.fetch;
+    global.fetch = async (url, opts) => {
+      assert.strictEqual(url, "http://127.0.0.1:8000/api/v1/documents/upload");
+      assert.strictEqual(opts.method, "POST");
+      assert.strictEqual(opts.headers.Authorization, "Bearer valid_token");
+      return {
+        ok: true,
+        status: 201,
+        json: async () => ({
+          id: "doc-123",
+          filename: "sample_paper.pdf",
+          total_chunks: 15,
+          page_count: 5,
+          status: "completed",
+        }),
+      };
+    };
+
+    try {
+      await tokenManager.storeTokens("valid_token", "valid_refresh");
+      const res = await client.uploadDocument(Buffer.from("%PDF-1.4 test"), "sample_paper.pdf");
+      assert.strictEqual(res.success, true);
+      assert.strictEqual(res.document.id, "doc-123");
+      assert.strictEqual(res.document.total_chunks, 15);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });
 

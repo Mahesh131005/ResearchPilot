@@ -6,6 +6,7 @@
  */
 
 const vscode = require("vscode");
+const path = require("path");
 const { SSEResearchStream } = require("../api/sse");
 
 class SidebarProvider {
@@ -47,6 +48,9 @@ class SidebarProvider {
           break;
         case "startResearch":
           await this.handleStartResearch(data);
+          break;
+        case "uploadDocument":
+          await this.handleUploadDocument();
           break;
         case "viewReport":
           await this.reportPanel.show(data.jobId, data.query);
@@ -124,6 +128,52 @@ class SidebarProvider {
     await this.apiClient.tokenManager.clearTokens();
     vscode.window.showInformationMessage("ResearchPilot: Logged out.");
     await this.syncState();
+  }
+
+  async handleUploadDocument() {
+    const isAuth = await this.apiClient.tokenManager.isAuthenticated();
+    if (!isAuth) {
+      vscode.window.showWarningMessage("Please log in to ResearchPilot before uploading documents.");
+      return;
+    }
+
+    const uris = await vscode.window.showOpenDialog({
+      canSelectMany: false,
+      openLabel: "Upload Document for RAG",
+      filters: {
+        "PDF Documents": ["pdf"],
+      },
+    });
+
+    if (!uris || uris.length === 0) return;
+
+    const fileUri = uris[0];
+    const fileName = path.basename(fileUri.fsPath);
+
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: `ResearchPilot: Uploading and indexing "${fileName}" into knowledge base...`,
+        cancellable: false,
+      },
+      async () => {
+        try {
+          const fileBytes = await vscode.workspace.fs.readFile(fileUri);
+          const res = await this.apiClient.uploadDocument(Buffer.from(fileBytes), fileName);
+          if (!res.success) {
+            vscode.window.showErrorMessage(`Document Upload Failed: ${res.error}`);
+          } else {
+            const chunks = res.document.total_chunks || 0;
+            vscode.window.showInformationMessage(
+              `ResearchPilot: Ingested "${fileName}" (${chunks} chunks). Document is ready for RAG!`
+            );
+            await this.syncState();
+          }
+        } catch (err) {
+          vscode.window.showErrorMessage(`Upload Failed: ${err.message}`);
+        }
+      }
+    );
   }
 
   async handleStartResearch(payload) {
@@ -329,7 +379,18 @@ class SidebarProvider {
 
           <div class="row" style="justify-content: space-between;">
             <label><input type="checkbox" id="check-web" checked /> Web (Tavily)</label>
-            <label><input type="checkbox" id="check-docs" checked /> Document RAG</label>
+            <label><input type="checkbox" id="check-docs" checked onchange="toggleDocsSection()" /> Document RAG</label>
+          </div>
+
+          <!-- Document RAG Knowledge Base Section -->
+          <div id="docs-section" style="margin-bottom: 10px; padding: 8px; background: rgba(255, 255, 255, 0.03); border: 1px dashed var(--vscode-widget-border); border-radius: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-size: 11px; font-weight: 600;">Knowledge Base (PDFs)</span>
+              <button class="btn-secondary" style="width: auto; padding: 2px 8px; margin: 0; font-size: 10px;" onclick="uploadDocument()">+ Upload PDF</button>
+            </div>
+            <div id="docs-list" style="max-height: 110px; overflow-y: auto; font-size: 11px;">
+              <span style="opacity: 0.6; font-size: 10px;">Loading documents...</span>
+            </div>
           </div>
 
           <button id="btn-submit" onclick="submitResearch()">Run Multi-Agent Research</button>
@@ -379,18 +440,31 @@ class SidebarProvider {
             vscode.postMessage({ command: 'logout' });
           }
 
+          function toggleDocsSection() {
+            const checked = document.getElementById('check-docs').checked;
+            document.getElementById('docs-section').style.display = checked ? 'block' : 'none';
+          }
+
+          function uploadDocument() {
+            vscode.postMessage({ command: 'uploadDocument' });
+          }
+
           function submitResearch() {
             const query = document.getElementById('query-input').value.trim();
             const depth = document.getElementById('depth-select').value;
             const enableWeb = document.getElementById('check-web').checked;
             const enableDocuments = document.getElementById('check-docs').checked;
 
+            const docCheckboxes = document.querySelectorAll('.doc-checkbox:checked');
+            const documentIds = Array.from(docCheckboxes).map(cb => cb.value);
+
             vscode.postMessage({
               command: 'startResearch',
               query,
               depth,
               enableWeb,
-              enableDocuments
+              enableDocuments,
+              documentIds,
             });
           }
 
@@ -455,6 +529,28 @@ class SidebarProvider {
               document.getElementById('quota-daily-text').innerText = dailyUsed + ' / ' + dailyLimit;
               const pct = Math.min(100, Math.round((dailyUsed / dailyLimit) * 100));
               document.getElementById('quota-daily-bar').style.width = pct + '%';
+            }
+
+            // Documents list
+            const docsList = document.getElementById('docs-list');
+            if (docsList) {
+              if (data.documents && data.documents.length > 0) {
+                const docHtml = data.documents.map(doc => {
+                  const docName = escapeHtml(doc.filename || 'Document');
+                  const chunks = doc.total_chunks || doc.chunk_count || 0;
+                  const pages = doc.page_count ? doc.page_count + 'p, ' : '';
+                  const meta = pages + chunks + ' chunks';
+                  return '<div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">' +
+                    '<input type="checkbox" class="doc-checkbox" id="doc-' + doc.id + '" value="' + doc.id + '" checked style="width: auto; margin: 0;" />' +
+                    '<label for="doc-' + doc.id + '" style="cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px;" title="' + docName + ' (' + meta + ')">' +
+                      '📄 ' + docName + ' <span style="opacity: 0.6; font-size: 9px;">(' + meta + ')</span>' +
+                    '</label>' +
+                  '</div>';
+                }).join('');
+                docsList.innerHTML = docHtml;
+              } else {
+                docsList.innerHTML = '<div style="font-size: 10px; opacity: 0.65; padding: 2px 0;">No PDFs uploaded yet. Click <strong>+ Upload PDF</strong> to ingest.</div>';
+              }
             }
 
             // History
